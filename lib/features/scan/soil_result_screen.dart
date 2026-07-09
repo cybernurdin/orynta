@@ -1,0 +1,170 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../core/localization/locale_provider.dart';
+import '../../core/theme/app_colors.dart';
+import '../../core/widgets/confidence_badge.dart';
+import '../../core/widgets/section_header.dart';
+import '../../data/models/soil_scan.dart';
+import '../shell/app_shell.dart';
+
+/// FR-1.2–1.4: soil type + fertility + confidence, never shown without
+/// its confidence band, plus the ranked crop list with plain-language
+/// rationale (FR-1.3).
+class SoilResultScreen extends StatelessWidget {
+  final SoilScan scan;
+  const SoilResultScreen({super.key, required this.scan});
+
+  String _soilTypeLabel(SoilType type) => switch (type) {
+        SoilType.clay => 'Clay',
+        SoilType.sandy => 'Sandy',
+        SoilType.loam => 'Loam',
+        SoilType.silt => 'Silt',
+        SoilType.mixed => 'Mixed',
+      };
+
+  String _fertilityLabel(FertilityBand band) => switch (band) {
+        FertilityBand.low => 'Low',
+        FertilityBand.medium => 'Medium',
+        FertilityBand.high => 'High',
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = context.watch<LocaleProvider>().strings;
+
+    return Scaffold(
+      appBar: AppBar(title: Text(strings('scanSoilTitle'))),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ConfidenceBadge(confidence: scan.confidence, strings: strings),
+                  const SizedBox(height: 16),
+                  _InfoRow(label: strings('soilType'), value: _soilTypeLabel(scan.soilType)),
+                  const SizedBox(height: 10),
+                  _InfoRow(label: strings('fertility'), value: _fertilityLabel(scan.fertilityBand)),
+                ],
+              ),
+            ),
+          ),
+          if (scan.confidence < 0.70) ...[
+            const SizedBox(height: 12),
+            _EscalationNotice(text: strings('escalationNotice')),
+          ],
+          const SizedBox(height: 20),
+          SectionHeader(title: strings('recommendedCrops')),
+          const SizedBox(height: 10),
+          ...scan.recommendations.map(
+            (rec) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      CircleAvatar(
+                        radius: 14,
+                        backgroundColor: AppColors.moss.withValues(alpha: 0.3),
+                        child: Text(
+                          '${rec.rank}',
+                          style: const TextStyle(
+                            color: AppColors.forest,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(rec.cropName, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 16)),
+                            const SizedBox(height: 4),
+                            Text(
+                              rec.rationale,
+                              style: const TextStyle(color: AppColors.grey, fontSize: 13),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.of(context).popUntil((r) => r.isFirst),
+                  child: Text(strings('scanAnother')),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () => Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (_) => const AppShell()),
+                    (route) => false,
+                  ),
+                  child: Text(strings('backToHome')),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  final String label;
+  final String value;
+  const _InfoRow({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: const TextStyle(color: AppColors.grey, fontSize: 14)),
+        Text(value, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+      ],
+    );
+  }
+}
+
+class _EscalationNotice extends StatelessWidget {
+  final String text;
+  const _EscalationNotice({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.confidenceLow.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.info_outline_rounded, color: AppColors.confidenceLow, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(text, style: const TextStyle(color: AppColors.ink, fontSize: 13)),
+          ),
+        ],
+      ),
+    );
+  }
+}
