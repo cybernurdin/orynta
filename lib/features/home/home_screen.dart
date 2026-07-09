@@ -119,7 +119,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               )
             else
-              ...recentItems.take(5).map((item) => _RecentTile(item: item)),
+              ...recentItems.take(5).map((item) => _RecentTile(item: item, strings: strings)),
           ],
         ),
       ),
@@ -233,19 +233,22 @@ class _QuickAction extends StatelessWidget {
 }
 
 class _RecentItem {
+  final String id;
   final bool isSoil;
   final DateTime capturedAt;
   final double confidence;
   final String title;
 
   _RecentItem.soil(SoilScan s)
-      : isSoil = true,
+      : id = s.id,
+        isSoil = true,
         capturedAt = s.capturedAt,
         confidence = s.confidence,
         title = s.soilType.name;
 
   _RecentItem.leaf(LeafDiagnosis d)
-      : isSoil = false,
+      : id = d.id,
+        isSoil = false,
         capturedAt = d.capturedAt,
         confidence = d.confidence,
         title = d.predictedClass;
@@ -253,27 +256,60 @@ class _RecentItem {
 
 class _RecentTile extends StatelessWidget {
   final _RecentItem item;
-  const _RecentTile({required this.item});
+  final dynamic strings;
+  const _RecentTile({required this.item, required this.strings});
 
   @override
   Widget build(BuildContext context) {
     final color = AppColors.confidenceColor(item.confidence);
-    return Card(
-      margin: const EdgeInsets.only(bottom: 10),
-      child: ListTile(
-        leading: IconCircle(
-          icon: item.isSoil ? Icons.grass_rounded : Icons.eco_rounded,
-          background: item.isSoil ? AppColors.forest : AppColors.amber,
-          size: 40,
+    return Dismissible(
+      key: ValueKey(item.id),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        decoration: BoxDecoration(
+          color: AppColors.confidenceLow,
+          borderRadius: BorderRadius.circular(8),
         ),
-        title: Text(item.title),
-        subtitle: Text(
-          '${item.capturedAt.hour.toString().padLeft(2, '0')}:${item.capturedAt.minute.toString().padLeft(2, '0')}',
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: const Icon(Icons.delete_outline_rounded, color: AppColors.white),
+      ),
+      confirmDismiss: (_) => showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(strings('delete')),
+          content: Text(strings('deleteScanConfirm')),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(strings('cancel'))),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: Text(strings('confirm'), style: const TextStyle(color: AppColors.confidenceLow)),
+            ),
+          ],
         ),
-        trailing: Container(
-          width: 10,
-          height: 10,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      ),
+      onDismissed: (_) {
+        final repo = context.read<AppRepository>();
+        item.isSoil ? repo.removeSoilScan(item.id) : repo.removeLeafDiagnosis(item.id);
+      },
+      child: Card(
+        margin: const EdgeInsets.only(bottom: 10),
+        child: ListTile(
+          leading: IconCircle(
+            icon: item.isSoil ? Icons.grass_rounded : Icons.eco_rounded,
+            background: item.isSoil ? AppColors.forest : AppColors.amber,
+            size: 40,
+          ),
+          title: Text(item.title),
+          subtitle: Text(
+            '${item.capturedAt.hour.toString().padLeft(2, '0')}:${item.capturedAt.minute.toString().padLeft(2, '0')}',
+          ),
+          trailing: Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
         ),
       ),
     );

@@ -82,6 +82,32 @@ class AppRepository extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> updateListing(MarketListing listing) async {
+    final index = _listings.indexWhere((l) => l.id == listing.id);
+    if (index == -1) return;
+    _listings[index] = listing;
+    await _persistListings();
+    notifyListeners();
+  }
+
+  Future<void> removeListing(String id) async {
+    _listings.removeWhere((l) => l.id == id);
+    await _persistListings();
+    notifyListeners();
+  }
+
+  Future<void> removeSoilScan(String id) async {
+    _soilScans.removeWhere((s) => s.id == id);
+    await _persistSoil();
+    notifyListeners();
+  }
+
+  Future<void> removeLeafDiagnosis(String id) async {
+    _leafDiagnoses.removeWhere((d) => d.id == id);
+    await _persistLeaf();
+    notifyListeners();
+  }
+
   SoilScan _markSynced(SoilScan scan) => SoilScan(
         id: scan.id,
         source: scan.source,

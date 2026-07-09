@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/localization/locale_provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/section_header.dart';
+import '../../data/models/market_listing.dart';
 import '../../data/models/supplier.dart';
 import '../../data/services/app_repository.dart';
 import '../../data/services/market_service.dart';
@@ -70,7 +71,35 @@ class _MarketScreenState extends State<MarketScreen> {
                   leading: const Icon(Icons.eco_rounded, color: AppColors.forest),
                   title: Text('${l.cropName} · ${l.quantity.toStringAsFixed(0)} ${l.unit}'),
                   subtitle: Text(
-                    '${strings('readyDate')}: ${l.readyDate.year}-${l.readyDate.month.toString().padLeft(2, '0')}-${l.readyDate.day.toString().padLeft(2, '0')}',
+                    '${strings('readyDate')}: ${l.readyDate.year}-${l.readyDate.month.toString().padLeft(2, '0')}-${l.readyDate.day.toString().padLeft(2, '0')}'
+                    ' · ${strings(_statusKey(l.status))}',
+                  ),
+                  trailing: PopupMenuButton<_ListingAction>(
+                    icon: const Icon(Icons.more_vert_rounded, color: AppColors.grey),
+                    onSelected: (action) => switch (action) {
+                      _ListingAction.edit => showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          builder: (_) => AddListingSheet(existing: l),
+                        ),
+                      _ListingAction.delete => _confirmDeleteListing(context, strings, l.id),
+                    },
+                    itemBuilder: (_) => [
+                      PopupMenuItem(
+                        value: _ListingAction.edit,
+                        child: ListTile(
+                          leading: const Icon(Icons.edit_outlined),
+                          title: Text(strings('edit')),
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: _ListingAction.delete,
+                        child: ListTile(
+                          leading: const Icon(Icons.delete_outline_rounded, color: AppColors.confidenceLow),
+                          title: Text(strings('delete')),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -133,4 +162,32 @@ class _MarketScreenState extends State<MarketScreen> {
       ),
     );
   }
+
+  String _statusKey(ListingStatus status) => switch (status) {
+        ListingStatus.active => 'statusActive',
+        ListingStatus.pending => 'statusPending',
+        ListingStatus.sold => 'statusSold',
+      };
+
+  void _confirmDeleteListing(BuildContext context, dynamic strings, String id) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(strings('deleteListing')),
+        content: Text(strings('deleteListingConfirm')),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: Text(strings('cancel'))),
+          TextButton(
+            onPressed: () {
+              context.read<AppRepository>().removeListing(id);
+              Navigator.of(ctx).pop();
+            },
+            child: Text(strings('confirm'), style: const TextStyle(color: AppColors.confidenceLow)),
+          ),
+        ],
+      ),
+    );
+  }
 }
+
+enum _ListingAction { edit, delete }
