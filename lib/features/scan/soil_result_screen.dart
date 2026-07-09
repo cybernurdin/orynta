@@ -4,7 +4,9 @@ import '../../core/localization/locale_provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/confidence_badge.dart';
 import '../../core/widgets/section_header.dart';
+import '../../data/models/saved_crop.dart';
 import '../../data/models/soil_scan.dart';
+import '../../data/services/app_repository.dart';
 import '../shell/app_shell.dart';
 
 /// FR-1.2–1.4: soil type + fertility + confidence, never shown without
@@ -31,6 +33,8 @@ class SoilResultScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final strings = context.watch<LocaleProvider>().strings;
+    final repo = context.watch<AppRepository>();
+    final savedCropNames = repo.savedCrops.map((c) => c.cropName).toSet();
 
     return Scaffold(
       appBar: AppBar(title: Text(strings('scanSoilTitle'))),
@@ -93,6 +97,25 @@ class SoilResultScreen extends StatelessWidget {
                             ),
                           ],
                         ),
+                      ),
+                      IconButton(
+                        icon: Icon(
+                          savedCropNames.contains(rec.cropName)
+                              ? Icons.bookmark_rounded
+                              : Icons.bookmark_outline_rounded,
+                          color: AppColors.forest,
+                        ),
+                        tooltip: strings('saveToMyCrops'),
+                        onPressed: savedCropNames.contains(rec.cropName)
+                            ? null
+                            : () => context.read<AppRepository>().saveCrop(
+                                  SavedCrop(
+                                    id: 'saved_${DateTime.now().microsecondsSinceEpoch}',
+                                    cropName: rec.cropName,
+                                    rationale: rec.rationale,
+                                    savedAt: DateTime.now(),
+                                  ),
+                                ),
                       ),
                     ],
                   ),

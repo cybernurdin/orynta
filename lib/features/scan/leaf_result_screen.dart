@@ -8,6 +8,7 @@ import '../../data/models/leaf_diagnosis.dart';
 import '../../data/models/supplier.dart';
 import '../../data/services/market_service.dart';
 import '../shell/app_shell.dart';
+import '../support/chat_screen.dart';
 
 /// FR-2.1–2.3: diagnosis + confidence + treatment guidance, with an
 /// escalation notice whenever confidence falls under threshold.
@@ -68,12 +69,25 @@ class _LeafResultScreenState extends State<LeafResultScreen> {
                 color: AppColors.confidenceLow.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.support_agent_rounded, color: AppColors.confidenceLow, size: 22),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(strings('escalationNotice'), style: const TextStyle(fontSize: 13)),
+                  Row(
+                    children: [
+                      const Icon(Icons.support_agent_rounded, color: AppColors.confidenceLow, size: 22),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(strings('escalationNotice'), style: const TextStyle(fontSize: 13)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  OutlinedButton.icon(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const ChatScreen()),
+                    ),
+                    icon: const Icon(Icons.chat_bubble_outline_rounded, size: 18),
+                    label: Text(strings('messageOfficer')),
                   ),
                 ],
               ),

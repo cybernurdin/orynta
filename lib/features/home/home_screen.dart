@@ -1,3 +1,4 @@
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/localization/locale_provider.dart';
@@ -5,19 +6,26 @@ import '../../core/theme/app_colors.dart';
 import '../../core/widgets/icon_circle.dart';
 import '../../core/widgets/offline_banner.dart';
 import '../../core/widgets/section_header.dart';
-import '../../data/models/leaf_diagnosis.dart';
 import '../../data/models/soil_scan.dart';
 import '../../data/models/weather_advisory.dart';
 import '../../data/services/app_repository.dart';
 import '../../data/services/weather_service.dart';
+import '../community/forum_screen.dart';
+import '../crops/my_crops_screen.dart';
+import '../learn/planting_guide_screen.dart';
+import '../notifications/notifications_screen.dart';
 import '../scan/capture_screen.dart';
 import '../scan/scan_type.dart';
+import '../support/chat_screen.dart';
 import 'language_switcher_sheet.dart';
+import 'recent_scan_tile.dart';
+import 'scan_history_screen.dart';
 
 /// Home = the first of Orynta_SRS.md §1.2's core journeys: weather advisory
 /// translated into a concrete action, plus one-tap entry into the two scan
 /// flows. The language switcher lives in the app bar here per
-/// Orynta_Brand_Guide.md §6 — never buried in settings.
+/// Orynta_Brand_Guide.md §6 ("Language switcher always accessible
+/// from home, not buried in settings").
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -46,15 +54,26 @@ class _HomeScreenState extends State<HomeScreen> {
     final strings = locale.strings;
     final repo = context.watch<AppRepository>();
 
-    final recentItems = <_RecentItem>[
-      ...repo.soilScans.map((s) => _RecentItem.soil(s)),
-      ...repo.leafDiagnoses.map((d) => _RecentItem.leaf(d)),
+    final recentItems = <RecentScanItem>[
+      ...repo.soilScans.map((s) => RecentScanItem.soil(s)),
+      ...repo.leafDiagnoses.map((d) => RecentScanItem.leaf(d)),
     ]..sort((a, b) => b.capturedAt.compareTo(a.capturedAt));
 
     return Scaffold(
       appBar: AppBar(
         title: Text(strings('appName')),
         actions: [
+          IconButton(
+            icon: Badge(
+              isLabelVisible: repo.unreadNotificationCount > 0,
+              label: Text('${repo.unreadNotificationCount}'),
+              child: const Icon(Icons.notifications_rounded),
+            ),
+            tooltip: strings('notifications'),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.translate_rounded),
             tooltip: strings('language'),
@@ -68,6 +87,7 @@ class _HomeScreenState extends State<HomeScreen> {
       body: RefreshIndicator(
         onRefresh: _loadWeather,
         child: ListView(
+          key: const Key('homeScrollView'),
           padding: const EdgeInsets.all(16),
           children: [
             if (!repo.isOnline) ...[
@@ -106,8 +126,64 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
             const SizedBox(height: 24),
-            SectionHeader(title: strings('recentScans')),
+            SectionHeader(title: strings('quickOverview')),
             const SizedBox(height: 10),
+            _StatsRow(repo: repo, strings: strings),
+            const SizedBox(height: 24),
+            SectionHeader(title: strings('soilHealthTrends')),
+            const SizedBox(height: 10),
+            _SoilHealthTrendCard(scans: repo.soilScans, strings: strings),
+            const SizedBox(height: 24),
+            SectionHeader(title: strings('explore')),
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 104,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: [
+                  _ExploreChip(
+                    icon: Icons.bookmark_rounded,
+                    label: strings('myCrops'),
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const MyCropsScreen()),
+                    ),
+                  ),
+                  _ExploreChip(
+                    icon: Icons.forum_rounded,
+                    label: strings('community'),
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const ForumScreen()),
+                    ),
+                  ),
+                  _ExploreChip(
+                    icon: Icons.calendar_month_rounded,
+                    label: strings('plantingGuide'),
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const PlantingGuideScreen()),
+                    ),
+                  ),
+                  _ExploreChip(
+                    icon: Icons.support_agent_rounded,
+                    label: strings('supportChat'),
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const ChatScreen()),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(child: SectionHeader(title: strings('recentScans'))),
+                TextButton(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const ScanHistoryScreen()),
+                  ),
+                  child: Text(strings('viewAll')),
+                ),
+              ],
+            ),
             if (recentItems.isEmpty)
               Card(
                 child: Padding(
@@ -119,7 +195,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               )
             else
-              ...recentItems.take(5).map((item) => _RecentTile(item: item, strings: strings)),
+              ...recentItems.take(5).map((item) => RecentScanTile(item: item, strings: strings)),
           ],
         ),
       ),
@@ -232,83 +308,171 @@ class _QuickAction extends StatelessWidget {
   }
 }
 
-class _RecentItem {
-  final String id;
-  final bool isSoil;
-  final DateTime capturedAt;
-  final double confidence;
-  final String title;
-
-  _RecentItem.soil(SoilScan s)
-      : id = s.id,
-        isSoil = true,
-        capturedAt = s.capturedAt,
-        confidence = s.confidence,
-        title = s.soilType.name;
-
-  _RecentItem.leaf(LeafDiagnosis d)
-      : id = d.id,
-        isSoil = false,
-        capturedAt = d.capturedAt,
-        confidence = d.confidence,
-        title = d.predictedClass;
-}
-
-class _RecentTile extends StatelessWidget {
-  final _RecentItem item;
+class _StatsRow extends StatelessWidget {
+  final AppRepository repo;
   final dynamic strings;
-  const _RecentTile({required this.item, required this.strings});
+  const _StatsRow({required this.repo, required this.strings});
 
   @override
   Widget build(BuildContext context) {
-    final color = AppColors.confidenceColor(item.confidence);
-    return Dismissible(
-      key: ValueKey(item.id),
-      direction: DismissDirection.endToStart,
-      background: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        decoration: BoxDecoration(
-          color: AppColors.confidenceLow,
-          borderRadius: BorderRadius.circular(8),
+    final totalScans = repo.soilScans.length + repo.leafDiagnoses.length;
+    final cropsMonitored = repo.soilScans
+        .expand((s) => s.recommendations.map((r) => r.cropName))
+        .toSet()
+        .length;
+    final healthScore = repo.soilScans.isEmpty
+        ? null
+        : (repo.soilScans.map((s) => s.confidence).reduce((a, b) => a + b) /
+                repo.soilScans.length *
+                100)
+            .round();
+
+    return Row(
+      children: [
+        Expanded(
+          child: _StatTile(
+            icon: Icons.camera_alt_rounded,
+            value: '$totalScans',
+            label: strings('totalScans'),
+          ),
         ),
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: const Icon(Icons.delete_outline_rounded, color: AppColors.white),
-      ),
-      confirmDismiss: (_) => showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: Text(strings('delete')),
-          content: Text(strings('deleteScanConfirm')),
-          actions: [
-            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(strings('cancel'))),
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: Text(strings('confirm'), style: const TextStyle(color: AppColors.confidenceLow)),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _StatTile(
+            icon: Icons.eco_rounded,
+            value: '$cropsMonitored',
+            label: strings('cropsMonitored'),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _StatTile(
+            icon: Icons.favorite_rounded,
+            value: healthScore == null ? '—' : '$healthScore%',
+            label: strings('healthScore'),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StatTile extends StatelessWidget {
+  final IconData icon;
+  final String value;
+  final String label;
+  const _StatTile({required this.icon, required this.value, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+        child: Column(
+          children: [
+            Icon(icon, color: AppColors.forest, size: 20),
+            const SizedBox(height: 8),
+            Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.grey, fontSize: 11),
             ),
           ],
         ),
       ),
-      onDismissed: (_) {
-        final repo = context.read<AppRepository>();
-        item.isSoil ? repo.removeSoilScan(item.id) : repo.removeLeafDiagnosis(item.id);
-      },
+    );
+  }
+}
+
+class _SoilHealthTrendCard extends StatelessWidget {
+  final List<SoilScan> scans;
+  final dynamic strings;
+  const _SoilHealthTrendCard({required this.scans, required this.strings});
+
+  double _fertilityScore(FertilityBand band) => switch (band) {
+        FertilityBand.low => 40,
+        FertilityBand.medium => 70,
+        FertilityBand.high => 95,
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    final chronological = scans.reversed.toList();
+    if (chronological.length < 2) {
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Text(strings('notEnoughScanData'), style: const TextStyle(color: AppColors.grey)),
+        ),
+      );
+    }
+    final points = chronological.take(10).toList();
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 20, 20, 12),
+        child: SizedBox(
+          height: 140,
+          child: LineChart(
+            LineChartData(
+              minY: 0,
+              maxY: 100,
+              gridData: const FlGridData(show: false),
+              titlesData: const FlTitlesData(show: false),
+              borderData: FlBorderData(show: false),
+              lineBarsData: [
+                LineChartBarData(
+                  spots: [
+                    for (var i = 0; i < points.length; i++)
+                      FlSpot(i.toDouble(), _fertilityScore(points[i].fertilityBand)),
+                  ],
+                  isCurved: true,
+                  color: AppColors.forest,
+                  barWidth: 3,
+                  dotData: const FlDotData(show: false),
+                  belowBarData: BarAreaData(
+                    show: true,
+                    color: AppColors.moss.withValues(alpha: 0.2),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ExploreChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  const _ExploreChip({required this.icon, required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 10),
       child: Card(
-        margin: const EdgeInsets.only(bottom: 10),
-        child: ListTile(
-          leading: IconCircle(
-            icon: item.isSoil ? Icons.grass_rounded : Icons.eco_rounded,
-            background: item.isSoil ? AppColors.forest : AppColors.amber,
-            size: 40,
-          ),
-          title: Text(item.title),
-          subtitle: Text(
-            '${item.capturedAt.hour.toString().padLeft(2, '0')}:${item.capturedAt.minute.toString().padLeft(2, '0')}',
-          ),
-          trailing: Container(
-            width: 10,
-            height: 10,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(8),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconCircle(icon: icon, background: AppColors.forest, size: 40),
+                const SizedBox(height: 8),
+                Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12, height: 1.1),
+                ),
+              ],
+            ),
           ),
         ),
       ),

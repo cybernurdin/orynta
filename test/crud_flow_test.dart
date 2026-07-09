@@ -82,6 +82,10 @@ void main() {
     await tester.pumpWidget(_wrap(const HomeScreen(), repo));
     await tester.pumpAndSettle();
 
+    final homeScroll = find.byKey(const Key('homeScrollView'));
+    await tester.dragUntilVisible(find.text('loam'), homeScroll, const Offset(0, -200));
+    await tester.pumpAndSettle();
+
     expect(find.text('loam'), findsOneWidget);
     expect(repo.soilScans, hasLength(1));
 

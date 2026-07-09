@@ -5,18 +5,32 @@ import '../../core/theme/app_colors.dart';
 import '../../core/widgets/icon_circle.dart';
 import '../../core/widgets/section_header.dart';
 import '../../core/widgets/sprout_mark.dart';
+import '../../data/models/farmer_profile.dart';
 import '../../data/services/app_repository.dart';
+import '../support/chat_screen.dart';
+import 'edit_profile_sheet.dart';
 
 /// FR-6.1 (SRS §6.1): a farmer can view, export, and request deletion of
 /// their own data from within the app — real features, not policy text.
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
+  String _typeLabel(dynamic strings, FarmerType type) => switch (type) {
+        FarmerType.beginner => strings('farmerTypeBeginner'),
+        FarmerType.advanced => strings('farmerTypeAdvanced'),
+        FarmerType.commercial => strings('farmerTypeCommercial'),
+        FarmerType.subsistence => strings('farmerTypeSubsistence'),
+        FarmerType.organic => strings('farmerTypeOrganic'),
+        FarmerType.agronomist => strings('farmerTypeAgronomist'),
+        FarmerType.officer => strings('farmerTypeOfficer'),
+      };
+
   @override
   Widget build(BuildContext context) {
     final locale = context.watch<LocaleProvider>();
     final strings = locale.strings;
     final repo = context.watch<AppRepository>();
+    final profile = repo.profile;
 
     return Scaffold(
       appBar: AppBar(title: Text(strings('profileTitle'))),
@@ -34,10 +48,27 @@ class ProfileScreen extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Mama Ngozi', style: Theme.of(context).textTheme.titleLarge),
+                        Text(profile.name, style: Theme.of(context).textTheme.titleLarge),
                         const SizedBox(height: 2),
-                        const Text('West Region · Tomato & maize', style: TextStyle(color: AppColors.grey, fontSize: 13)),
+                        Text(
+                          '${profile.region} · ${profile.cropFocus}',
+                          style: const TextStyle(color: AppColors.grey, fontSize: 13),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _typeLabel(strings, profile.farmerType),
+                          style: const TextStyle(color: AppColors.forest, fontSize: 12, fontWeight: FontWeight.w600),
+                        ),
                       ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined, color: AppColors.grey),
+                    tooltip: strings('editProfile'),
+                    onPressed: () => showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      builder: (_) => const EditProfileSheet(),
                     ),
                   ),
                 ],
@@ -111,6 +142,20 @@ class ProfileScreen extends StatelessWidget {
               ),
               value: repo.isOnline,
               onChanged: repo.setOnline,
+            ),
+          ),
+          const SizedBox(height: 24),
+          SectionHeader(title: strings('helpAndSupport')),
+          const SizedBox(height: 10),
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.support_agent_rounded, color: AppColors.forest),
+              title: Text(strings('supportChat')),
+              subtitle: Text(strings('agriculturalOfficer')),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const ChatScreen()),
+              ),
             ),
           ),
           const SizedBox(height: 24),
