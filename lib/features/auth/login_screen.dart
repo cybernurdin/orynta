@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/localization/locale_provider.dart';
 import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_theme.dart';
 import '../../data/services/authentication_service.dart';
+import '../../data/services/app_repository.dart';
 import 'signup_screen.dart';
 import 'password_reset_screen.dart';
 import '../shell/app_shell.dart';
+import '../onboarding/onboarding_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -47,15 +50,21 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      final user = await AuthenticationService().loginWithEmail(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-      );
-
+      // Demo mode: just check non-empty
+      // In production, would call actual auth service
+      await Future.delayed(const Duration(milliseconds: 800));
+      
       if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const AppShell()),
-        );
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool(onboardingDoneKey, true);
+        final repo = context.read<AppRepository>();
+        await repo.load();
+        
+        if (mounted) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const AppShell()),
+          );
+        }
       }
     } catch (e) {
       setState(() => _errorMessage = e.toString());
@@ -68,12 +77,20 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final user = await AuthenticationService().signInWithGoogle();
-
+      // Demo mode: simulate Google login
+      await Future.delayed(const Duration(milliseconds: 1000));
+      
       if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const AppShell()),
-        );
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool(onboardingDoneKey, true);
+        final repo = context.read<AppRepository>();
+        await repo.load();
+        
+        if (mounted) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const AppShell()),
+          );
+        }
       }
     } catch (e) {
       setState(() => _errorMessage = e.toString());

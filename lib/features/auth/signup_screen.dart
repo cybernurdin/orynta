@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/localization/locale_provider.dart';
 import '../../core/theme/app_colors.dart';
-import '../../data/services/authentication_service.dart';
+import '../../data/models/farmer_profile.dart';
+import '../../data/services/app_repository.dart';
 import 'login_screen.dart';
 import '../shell/app_shell.dart';
+import '../onboarding/onboarding_screen.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -66,22 +71,30 @@ class _SignupScreenState extends State<SignupScreen> {
     });
 
     try {
-      final user = await AuthenticationService().registerWithEmail(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-        displayName: _nameController.text,
-        userType: _selectedUserType,
-      );
-
+      // Demo mode: create profile locally
+      await Future.delayed(const Duration(milliseconds: 800));
+      
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Account created! Please verify your email.'),
-          ),
+        final repo = context.read<AppRepository>();
+        final profile = FarmerProfile(
+          id: _emailController.text.trim(),
+          name: _nameController.text,
+          email: _emailController.text.trim(),
+          farmType: _selectedUserType,
+          createdAt: DateTime.now(),
+          plots: const [],
         );
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const AppShell()),
-        );
+        repo.setProfile(profile);
+        
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool(onboardingDoneKey, true);
+        await repo.load();
+        
+        if (mounted) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const AppShell()),
+          );
+        }
       }
     } catch (e) {
       setState(() => _errorMessage = e.toString());
