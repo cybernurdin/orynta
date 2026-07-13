@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/localization/locale_provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/sprout_mark.dart';
-import '../shell/app_shell.dart';
+import '../auth/login_screen.dart';
 
 const String onboardingDoneKey = 'orynta_onboarding_done';
 
@@ -19,7 +19,7 @@ class OnboardingScreen extends StatelessWidget {
     await prefs.setBool(onboardingDoneKey, true);
     if (!context.mounted) return;
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const AppShell()),
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
     );
   }
 

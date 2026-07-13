@@ -4,6 +4,7 @@ import '../../core/localization/locale_provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/icon_circle.dart';
 import '../../data/services/app_repository.dart';
+import 'crops_directory_screen.dart';
 
 /// Crop recommendations the farmer bookmarked from a soil scan result,
 /// kept independent of the scan itself.
@@ -16,7 +17,18 @@ class MyCropsScreen extends StatelessWidget {
     final crops = context.watch<AppRepository>().savedCrops;
 
     return Scaffold(
-      appBar: AppBar(title: Text(strings('myCrops'))),
+      appBar: AppBar(
+        title: Text(strings('myCrops')),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.search_rounded),
+            tooltip: 'Browse crop directory',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const CropsDirectoryScreen()),
+            ),
+          ),
+        ],
+      ),
       body: crops.isEmpty
           ? Center(
               child: Padding(

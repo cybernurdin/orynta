@@ -1,14 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../../core/localization/locale_provider.dart';
 import '../../core/theme/app_colors.dart';
-import '../../data/services/authentication_service.dart';
 import '../../data/services/app_repository.dart';
 import 'signup_screen.dart';
 import 'password_reset_screen.dart';
 import '../shell/app_shell.dart';
-import '../onboarding/onboarding_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -55,8 +51,6 @@ class _LoginScreenState extends State<LoginScreen> {
       await Future.delayed(const Duration(milliseconds: 800));
       
       if (mounted) {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool(onboardingDoneKey, true);
         final repo = context.read<AppRepository>();
         await repo.load();
         
@@ -67,7 +61,7 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       }
     } catch (e) {
-      setState(() => _errorMessage = e.toString());
+      if (mounted) setState(() => _errorMessage = e.toString());
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -81,8 +75,6 @@ class _LoginScreenState extends State<LoginScreen> {
       await Future.delayed(const Duration(milliseconds: 1000));
       
       if (mounted) {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool(onboardingDoneKey, true);
         final repo = context.read<AppRepository>();
         await repo.load();
         
@@ -93,7 +85,7 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       }
     } catch (e) {
-      setState(() => _errorMessage = e.toString());
+      if (mounted) setState(() => _errorMessage = e.toString());
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

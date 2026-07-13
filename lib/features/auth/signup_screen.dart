@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../../core/localization/locale_provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/models/farmer_profile.dart';
 import '../../data/services/app_repository.dart';
 import 'login_screen.dart';
 import '../shell/app_shell.dart';
-import '../onboarding/onboarding_screen.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -76,19 +73,12 @@ class _SignupScreenState extends State<SignupScreen> {
       
       if (mounted) {
         final repo = context.read<AppRepository>();
-        final profile = FarmerProfile(
-          id: _emailController.text.trim(),
-          name: _nameController.text,
-          email: _emailController.text.trim(),
-          farmType: _selectedUserType,
-          createdAt: DateTime.now(),
-          plots: const [],
+        final defaults = FarmerProfile.defaults();
+        final profile = defaults.copyWith(
+          name: _nameController.text.trim(),
+          farmerType: _farmerTypeForSelection(_selectedUserType),
         );
-        repo.setProfile(profile);
-        
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool(onboardingDoneKey, true);
-        await repo.load();
+        await repo.updateProfile(profile);
         
         if (mounted) {
           Navigator.of(context).pushReplacement(
@@ -97,10 +87,18 @@ class _SignupScreenState extends State<SignupScreen> {
         }
       }
     } catch (e) {
-      setState(() => _errorMessage = e.toString());
+      if (mounted) setState(() => _errorMessage = e.toString());
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  FarmerType _farmerTypeForSelection(String selection) {
+    return switch (selection) {
+      'buyer' => FarmerType.commercial,
+      'extension_officer' => FarmerType.officer,
+      _ => FarmerType.beginner,
+    };
   }
 
   @override

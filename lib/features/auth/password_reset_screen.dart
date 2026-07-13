@@ -43,6 +43,7 @@ class _PasswordResetScreenState extends State<PasswordResetScreen> {
         _emailController.text.trim(),
       );
 
+      if (!mounted) return;
       setState(() {
         _message = 'Password reset link sent to your email. Check your inbox.';
         _isSuccess = true;
@@ -53,10 +54,12 @@ class _PasswordResetScreenState extends State<PasswordResetScreen> {
         if (mounted) Navigator.of(context).pop();
       });
     } catch (e) {
-      setState(() {
-        _message = e.toString();
-        _isSuccess = false;
-      });
+      if (mounted) {
+        setState(() {
+          _message = e.toString();
+          _isSuccess = false;
+        });
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

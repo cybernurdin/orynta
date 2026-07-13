@@ -157,7 +157,7 @@ class CropCard extends StatelessWidget {
       case 'cash_crop':
         return Icons.local_florist;
       default:
-        return Icons.leaf;
+        return Icons.eco;
     }
   }
 }
