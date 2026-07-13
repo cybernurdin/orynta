@@ -15,91 +15,65 @@ class CropCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Card(
-        elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image placeholder with category badge
             Stack(
               children: [
-                Container(
-                  height: 150,
+                SizedBox(
+                  height: 176,
                   width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[200],
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(12),
-                    ),
+                  child: Image.network(
+                    crop.imageUrl ?? _defaultImageUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => const ColoredBox(color: Color(0xFFE7EAE2)),
                   ),
-                  child: crop.imageUrl != null
-                      ? Image.network(
-                          crop.imageUrl!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return _buildPlaceholder(crop.category);
-                          },
-                        )
-                      : _buildPlaceholder(crop.category),
                 ),
                 Positioned(
-                  top: 8,
-                  right: 8,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: _getCategoryColor(crop.category),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      crop.category.replaceAll('_', ' '),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
+                  top: 12,
+                  left: 12,
+                  child: _CategoryBadge(category: crop.category),
                 ),
               ],
             ),
-            // Content
             Padding(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    crop.name,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          crop.name,
+                          style: Theme.of(context).textTheme.titleLarge,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const Icon(Icons.arrow_forward_rounded, size: 20),
+                    ],
                   ),
-                  const SizedBox(height: 8),
-                  _InfoRow(label: 'Soil', value: crop.bestSoilType),
-                  _InfoRow(label: 'pH', value: '${crop.optimalPh}'),
-                  _InfoRow(
-                    label: 'Moisture',
-                    value: '${crop.optimalMoisture.toStringAsFixed(0)}%',
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(child: _Fact(label: 'Best soil', value: crop.bestSoilType)),
+                      Expanded(child: _Fact(label: 'pH level', value: crop.optimalPh.toStringAsFixed(1))),
+                    ],
                   ),
-                  _InfoRow(
-                    label: 'Plant',
-                    value: crop.plantingMonth,
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(child: _Fact(label: 'Temperature', value: '${crop.minTemp.round()}-${crop.maxTemp.round()} C')),
+                      Expanded(child: _Fact(label: 'Moisture', value: '${crop.optimalMoisture.round()}%')),
+                    ],
                   ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: onTap,
-                      child: const Text('View Planting Guide'),
-                    ),
-                  ),
+                  const SizedBox(height: 14),
+                  Text('Plant ${crop.plantingMonth}', style: const TextStyle(fontSize: 13, color: Color(0xFF546154))),
                 ],
               ),
             ),
@@ -109,89 +83,41 @@ class CropCard extends StatelessWidget {
     );
   }
 
-  Widget _buildPlaceholder(String category) {
-    final icon = _getCategoryIcon(category);
-    return Container(
-      color: _getCategoryColor(category).withOpacity(0.1),
-      child: Center(
-        child: Icon(
-          icon,
-          size: 48,
-          color: _getCategoryColor(category),
-        ),
-      ),
-    );
-  }
-
-  Color _getCategoryColor(String category) {
-    switch (category) {
-      case 'vegetable':
-        return const Color(0xFF4CAF50);
-      case 'grain':
-        return const Color(0xFFFF9800);
-      case 'fruit':
-        return const Color(0xFFE91E63);
-      case 'legume':
-        return const Color(0xFF2196F3);
-      case 'root_crop':
-        return const Color(0xFF8D6E63);
-      case 'cash_crop':
-        return const Color(0xFF795548);
-      default:
-        return const Color(0xFF607D8B);
-    }
-  }
-
-  IconData _getCategoryIcon(String category) {
-    switch (category) {
-      case 'vegetable':
-        return Icons.eco;
-      case 'grain':
-        return Icons.grain;
-      case 'fruit':
-        return Icons.apple;
-      case 'legume':
-        return Icons.blur_on;
-      case 'root_crop':
-        return Icons.nature;
-      case 'cash_crop':
-        return Icons.local_florist;
-      default:
-        return Icons.eco;
-    }
-  }
+  static const _defaultImageUrl = 'https://images.unsplash.com/photo-1464226184884-fa280b87c399?auto=format&fit=crop&w=1200&q=80';
 }
 
-class _InfoRow extends StatelessWidget {
+class _Fact extends StatelessWidget {
   final String label;
   final String value;
 
-  const _InfoRow({
+  const _Fact({
     required this.label,
     required this.value,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey[600],
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF6B7568))),
+        const SizedBox(height: 2),
+        Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
       ],
     );
   }
+}
+
+class _CategoryBadge extends StatelessWidget {
+  const _CategoryBadge({required this.category});
+  final String category;
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+        decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.58), borderRadius: BorderRadius.circular(4)),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+          child: Text(category.replaceAll('_', ' '), style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+        ),
+      );
 }

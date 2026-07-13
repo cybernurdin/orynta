@@ -20,7 +20,7 @@ class InferenceService {
 
   final Random _random = Random();
 
-  Future<SoilScan> analyzeSoil({String? imagePath}) async {
+  Future<SoilScan> analyzeSoil({String? imagePath, String region = 'Not set'}) async {
     await Future.delayed(const Duration(seconds: 2, milliseconds: 400));
 
     final soilTypes = SoilType.values;
@@ -28,6 +28,11 @@ class InferenceService {
     final fertility =
         FertilityBand.values[_random.nextInt(FertilityBand.values.length)];
     final confidence = 0.55 + _random.nextDouble() * 0.44;
+    final healthScore = switch (fertility) {
+      FertilityBand.low => 35 + _random.nextDouble() * 18,
+      FertilityBand.medium => 55 + _random.nextDouble() * 18,
+      FertilityBand.high => 75 + _random.nextDouble() * 18,
+    };
 
     return SoilScan(
       id: 'scan_${DateTime.now().microsecondsSinceEpoch}',
@@ -39,6 +44,13 @@ class InferenceService {
       modelVersion: soilModelVersion,
       imagePath: imagePath,
       recommendations: _recommendationsFor(soilType, fertility),
+      phLevel: double.parse((5.4 + _random.nextDouble() * 2.2).toStringAsFixed(1)),
+      moisturePercent: double.parse((32 + _random.nextDouble() * 48).toStringAsFixed(0)),
+      healthScore: double.parse(healthScore.toStringAsFixed(0)),
+      nitrogenPercent: double.parse((30 + _random.nextDouble() * 58).toStringAsFixed(0)),
+      phosphorusPercent: double.parse((28 + _random.nextDouble() * 60).toStringAsFixed(0)),
+      potassiumPercent: double.parse((32 + _random.nextDouble() * 56).toStringAsFixed(0)),
+      region: region,
     );
   }
 

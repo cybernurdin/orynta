@@ -49,9 +49,30 @@ class SoilResultScreen extends StatelessWidget {
                 children: [
                   ConfidenceBadge(confidence: scan.confidence, strings: strings),
                   const SizedBox(height: 16),
+                  Text('Soil health score', style: Theme.of(context).textTheme.titleSmall),
+                  const SizedBox(height: 8),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        '${scan.healthScore.round()}',
+                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                              color: AppColors.confidenceColor(scan.healthScore / 100),
+                              fontSize: 42,
+                            ),
+                      ),
+                      const Padding(
+                        padding: EdgeInsets.only(left: 4, bottom: 8),
+                        child: Text('/ 100', style: TextStyle(color: AppColors.grey)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
                   _InfoRow(label: strings('soilType'), value: _soilTypeLabel(scan.soilType)),
                   const SizedBox(height: 10),
                   _InfoRow(label: strings('fertility'), value: _fertilityLabel(scan.fertilityBand)),
+                  const SizedBox(height: 10),
+                  _InfoRow(label: 'Location', value: scan.region),
                 ],
               ),
             ),
@@ -60,6 +81,27 @@ class SoilResultScreen extends StatelessWidget {
             const SizedBox(height: 12),
             _EscalationNotice(text: strings('escalationNotice')),
           ],
+          const SizedBox(height: 20),
+          SectionHeader(title: 'Soil conditions'),
+          const SizedBox(height: 10),
+          _MetricGrid(scan: scan),
+          const SizedBox(height: 20),
+          SectionHeader(title: 'Nutrient analysis'),
+          const SizedBox(height: 10),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  _NutrientBar(label: 'Nitrogen', value: scan.nitrogenPercent),
+                  const SizedBox(height: 14),
+                  _NutrientBar(label: 'Phosphorus', value: scan.phosphorusPercent),
+                  const SizedBox(height: 14),
+                  _NutrientBar(label: 'Potassium', value: scan.potassiumPercent),
+                ],
+              ),
+            ),
+          ),
           const SizedBox(height: 20),
           SectionHeader(title: strings('recommendedCrops')),
           const SizedBox(height: 10),
@@ -165,6 +207,90 @@ class _InfoRow extends StatelessWidget {
       ],
     );
   }
+}
+
+class _MetricGrid extends StatelessWidget {
+  const _MetricGrid({required this.scan});
+
+  final SoilScan scan;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _MetricTile(
+            icon: Icons.science_outlined,
+            label: 'pH level',
+            value: scan.phLevel.toStringAsFixed(1),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _MetricTile(
+            icon: Icons.water_drop_outlined,
+            label: 'Moisture',
+            value: '${scan.moisturePercent.round()}%',
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MetricTile extends StatelessWidget {
+  const _MetricTile({required this.icon, required this.label, required this.value});
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => Card(
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(icon, size: 20, color: AppColors.forest),
+              const SizedBox(height: 14),
+              Text(value, style: Theme.of(context).textTheme.titleLarge),
+              Text(label, style: const TextStyle(fontSize: 12, color: AppColors.grey)),
+            ],
+          ),
+        ),
+      );
+}
+
+class _NutrientBar extends StatelessWidget {
+  const _NutrientBar({required this.label, required this.value});
+
+  final String label;
+  final double value;
+
+  @override
+  Widget build(BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+              Text('${value.round()}%', style: const TextStyle(color: AppColors.grey)),
+            ],
+          ),
+          const SizedBox(height: 7),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: value / 100,
+              minHeight: 8,
+              backgroundColor: AppColors.moss.withValues(alpha: 0.2),
+              valueColor: const AlwaysStoppedAnimation(AppColors.forest),
+            ),
+          ),
+        ],
+      );
 }
 
 class _EscalationNotice extends StatelessWidget {

@@ -44,6 +44,13 @@ class SoilScan {
   final String? imagePath;
   final List<CropRecommendation> recommendations;
   final bool synced;
+  final double phLevel;
+  final double moisturePercent;
+  final double healthScore;
+  final double nitrogenPercent;
+  final double phosphorusPercent;
+  final double potassiumPercent;
+  final String region;
 
   const SoilScan({
     required this.id,
@@ -56,6 +63,13 @@ class SoilScan {
     required this.recommendations,
     this.imagePath,
     this.synced = false,
+    this.phLevel = 6.5,
+    this.moisturePercent = 50,
+    this.healthScore = 65,
+    this.nitrogenPercent = 50,
+    this.phosphorusPercent = 50,
+    this.potassiumPercent = 50,
+    this.region = 'Not set',
   });
 
   Map<String, dynamic> toJson() => {
@@ -69,6 +83,13 @@ class SoilScan {
         'imagePath': imagePath,
         'recommendations': recommendations.map((e) => e.toJson()).toList(),
         'synced': synced,
+        'phLevel': phLevel,
+        'moisturePercent': moisturePercent,
+        'healthScore': healthScore,
+        'nitrogenPercent': nitrogenPercent,
+        'phosphorusPercent': phosphorusPercent,
+        'potassiumPercent': potassiumPercent,
+        'region': region,
       };
 
   factory SoilScan.fromJson(Map<String, dynamic> json) => SoilScan(
@@ -85,5 +106,12 @@ class SoilScan {
             .map((e) => CropRecommendation.fromJson(e as Map<String, dynamic>))
             .toList(),
         synced: json['synced'] as bool? ?? false,
+        phLevel: (json['phLevel'] as num?)?.toDouble() ?? 6.5,
+        moisturePercent: (json['moisturePercent'] as num?)?.toDouble() ?? 50,
+        healthScore: (json['healthScore'] as num?)?.toDouble() ?? 65,
+        nitrogenPercent: (json['nitrogenPercent'] as num?)?.toDouble() ?? 50,
+        phosphorusPercent: (json['phosphorusPercent'] as num?)?.toDouble() ?? 50,
+        potassiumPercent: (json['potassiumPercent'] as num?)?.toDouble() ?? 50,
+        region: json['region'] as String? ?? 'Not set',
       );
 }

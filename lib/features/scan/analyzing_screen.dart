@@ -4,6 +4,7 @@ import '../../core/localization/locale_provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/services/app_repository.dart';
 import '../../data/services/inference_service.dart';
+import '../../data/services/location_service.dart';
 import 'leaf_result_screen.dart';
 import 'scan_type.dart';
 import 'soil_result_screen.dart';
@@ -20,6 +21,7 @@ class AnalyzingScreen extends StatefulWidget {
 
 class _AnalyzingScreenState extends State<AnalyzingScreen> {
   final InferenceService _inference = InferenceService();
+  final LocationService _locationService = LocationService();
 
   @override
   void initState() {
@@ -31,7 +33,11 @@ class _AnalyzingScreenState extends State<AnalyzingScreen> {
     final repo = context.read<AppRepository>();
 
     if (widget.type == ScanType.soil) {
-      final result = await _inference.analyzeSoil(imagePath: widget.imagePath);
+      final region = await _currentLocationLabel();
+      final result = await _inference.analyzeSoil(
+        imagePath: widget.imagePath,
+        region: region,
+      );
       await repo.addSoilScan(result);
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
@@ -44,6 +50,15 @@ class _AnalyzingScreenState extends State<AnalyzingScreen> {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => LeafResultScreen(diagnosis: result)),
       );
+    }
+  }
+
+  Future<String> _currentLocationLabel() async {
+    try {
+      final position = await _locationService.getCurrentLocation();
+      return _locationService.getLocationAddress(position.latitude, position.longitude);
+    } catch (_) {
+      return 'Not set';
     }
   }
 
