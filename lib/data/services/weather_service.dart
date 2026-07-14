@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../models/weather_advisory.dart';
@@ -168,7 +169,7 @@ class WeatherService {
       }
       return null;
     } catch (e) {
-      print('Error fetching weather: $e');
+      debugPrint('Error fetching weather: $e');
       return null;
     }
   }
@@ -190,9 +191,9 @@ class WeatherService {
         final data = jsonDecode(response.body);
         final daily = data['daily'];
         final datesList = daily['time'] as List;
-        final temps_max = daily['temperature_2m_max'] as List;
-        final temps_min = daily['temperature_2m_min'] as List;
-        final weather_codes = daily['weather_code'] as List;
+        final tempsMax = daily['temperature_2m_max'] as List;
+        final tempsMin = daily['temperature_2m_min'] as List;
+        final weatherCodes = daily['weather_code'] as List;
         final precipitations = daily['precipitation_sum'] as List? ?? [];
 
         List<WeatherForecast> forecasts = [];
@@ -200,10 +201,10 @@ class WeatherService {
           forecasts.add(
             WeatherForecast(
               date: datesList[i] as String,
-              tempMax: (temps_max[i] as num).toDouble(),
-              tempMin: (temps_min[i] as num).toDouble(),
-              condition: _getWeatherCondition(weather_codes[i]),
-              description: _getWeatherDescription(weather_codes[i]),
+              tempMax: (tempsMax[i] as num).toDouble(),
+              tempMin: (tempsMin[i] as num).toDouble(),
+              condition: _getWeatherCondition(weatherCodes[i]),
+              description: _getWeatherDescription(weatherCodes[i]),
               chanceOfRain: i < precipitations.length ? (precipitations[i] as num).toDouble() : 0,
             ),
           );
@@ -212,7 +213,7 @@ class WeatherService {
       }
       return [];
     } catch (e) {
-      print('Error fetching forecast: $e');
+      debugPrint('Error fetching forecast: $e');
       return [];
     }
   }

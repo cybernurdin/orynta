@@ -36,13 +36,14 @@ void main() {
 
     await tester.tap(find.text('Ask a question'));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField), 'Does anyone know a natural fix for aphids on beans?');
+    await tester.enterText(find.byType(TextField).at(0), 'Aphids on beans');
+    await tester.enterText(find.byType(TextField).at(1), 'Does anyone know a natural fix for aphids on beans?');
     await tester.tap(find.text('Post'));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('Does anyone know a natural fix'), findsOneWidget);
+    expect(find.text('Aphids on beans'), findsOneWidget);
 
-    await tester.tap(find.textContaining('Does anyone know a natural fix').first);
+    await tester.tap(find.text('Aphids on beans').first);
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(TextField), 'Try a soapy water spray.');

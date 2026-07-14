@@ -95,7 +95,12 @@ class AppTheme {
     );
   }
 
-  /// Forest Dark theme — onboarding/splash only per brand guide §7.
+  /// Onboarding/splash always use this regardless of the user's Dark Mode
+  /// preference — per brand guide §7. Also selectable as the app-wide Dark
+  /// Mode theme from Profile > Settings, so it's kept at full parity with
+  /// `light()` rather than as a partial/decorative-only theme.
+  static const Color _surfaceDark = Color(0xFF16311A);
+
   static ThemeData dark() {
     final base = ThemeData(useMaterial3: true, brightness: Brightness.dark);
     return base.copyWith(
@@ -104,19 +109,51 @@ class AppTheme {
         primary: AppColors.moss,
         secondary: AppColors.amber,
         surface: AppColors.forestDark,
+        error: AppColors.confidenceLow,
         onPrimary: AppColors.forestDark,
+        onSecondary: AppColors.forestDark,
         onSurface: AppColors.white,
+      ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: AppColors.forestDark,
+        foregroundColor: AppColors.white,
+        elevation: 0,
+        centerTitle: false,
+        titleTextStyle: TextStyle(
+          fontFamily: _headlineFont,
+          color: AppColors.white,
+          fontSize: 22,
+          fontWeight: FontWeight.bold,
+        ),
       ),
       textTheme: base.textTheme
           .apply(bodyColor: AppColors.white, displayColor: AppColors.white)
           .copyWith(
             headlineMedium: const TextStyle(
               fontFamily: _headlineFont,
-              fontSize: 28,
+              fontSize: 24,
               fontWeight: FontWeight.bold,
               color: AppColors.white,
             ),
+            titleLarge: const TextStyle(
+              fontFamily: _headlineFont,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: AppColors.white,
+            ),
+            bodyLarge: const TextStyle(fontSize: 16, color: AppColors.white),
+            bodyMedium: const TextStyle(fontSize: 14, color: AppColors.white),
+            bodySmall: TextStyle(fontSize: 12, color: AppColors.white.withValues(alpha: 0.7)),
           ),
+      cardTheme: CardThemeData(
+        color: _surfaceDark,
+        elevation: 3,
+        shadowColor: Colors.black.withValues(alpha: 0.3),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+        margin: EdgeInsets.zero,
+      ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.moss,
@@ -128,6 +165,25 @@ class AppTheme {
           textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
       ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.moss,
+          side: const BorderSide(color: AppColors.moss, width: 1.5),
+          minimumSize: const Size.fromHeight(52),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        ),
+      ),
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
+        backgroundColor: _surfaceDark,
+        selectedItemColor: AppColors.moss,
+        unselectedItemColor: AppColors.white.withValues(alpha: 0.6),
+        type: BottomNavigationBarType.fixed,
+        showUnselectedLabels: true,
+      ),
+      dividerTheme: DividerThemeData(color: AppColors.white.withValues(alpha: 0.1)),
     );
   }
 }

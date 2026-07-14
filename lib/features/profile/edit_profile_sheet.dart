@@ -15,6 +15,7 @@ class _EditProfileSheetState extends State<EditProfileSheet> {
   late final TextEditingController _nameController;
   late final TextEditingController _regionController;
   late final TextEditingController _cropController;
+  late final TextEditingController _bioController;
   late FarmerType _farmerType;
 
   @override
@@ -24,6 +25,7 @@ class _EditProfileSheetState extends State<EditProfileSheet> {
     _nameController = TextEditingController(text: profile.name);
     _regionController = TextEditingController(text: profile.region);
     _cropController = TextEditingController(text: profile.cropFocus);
+    _bioController = TextEditingController(text: profile.bio);
     _farmerType = profile.farmerType;
   }
 
@@ -32,6 +34,7 @@ class _EditProfileSheetState extends State<EditProfileSheet> {
     _nameController.dispose();
     _regionController.dispose();
     _cropController.dispose();
+    _bioController.dispose();
     super.dispose();
   }
 
@@ -86,6 +89,12 @@ class _EditProfileSheetState extends State<EditProfileSheet> {
                   .toList(),
               onChanged: (t) => setState(() => _farmerType = t ?? _farmerType),
             ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _bioController,
+              maxLines: 3,
+              decoration: InputDecoration(labelText: strings('bio')),
+            ),
             const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
@@ -102,6 +111,7 @@ class _EditProfileSheetState extends State<EditProfileSheet> {
                       region: region,
                       cropFocus: crop,
                       farmerType: _farmerType,
+                      bio: _bioController.text.trim(),
                     ),
                   );
                   Navigator.of(context).pop();

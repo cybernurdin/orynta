@@ -3,6 +3,10 @@
 /// rather than ever being shown as a settled fact.
 enum EscalationStatus { none, pending, resolved }
 
+/// Coarse leaf-health classification driving the result screen's status
+/// treatment — parallel to `FertilityBand` on the soil side.
+enum DiseaseStatus { healthy, infected, deficient }
+
 class LeafDiagnosis {
   final String id;
   final DateTime capturedAt;
@@ -13,6 +17,10 @@ class LeafDiagnosis {
   final String treatment;
   final String safetyNotes;
   final EscalationStatus escalationStatus;
+  final double healthScore;
+  final String? deficiencyType;
+  final DiseaseStatus diseaseStatus;
+  final List<String> recommendations;
 
   const LeafDiagnosis({
     required this.id,
@@ -24,6 +32,10 @@ class LeafDiagnosis {
     required this.safetyNotes,
     required this.escalationStatus,
     this.imagePath,
+    this.healthScore = 70,
+    this.deficiencyType,
+    this.diseaseStatus = DiseaseStatus.healthy,
+    this.recommendations = const [],
   });
 
   Map<String, dynamic> toJson() => {
@@ -36,6 +48,10 @@ class LeafDiagnosis {
         'treatment': treatment,
         'safetyNotes': safetyNotes,
         'escalationStatus': escalationStatus.name,
+        'healthScore': healthScore,
+        'deficiencyType': deficiencyType,
+        'diseaseStatus': diseaseStatus.name,
+        'recommendations': recommendations,
       };
 
   factory LeafDiagnosis.fromJson(Map<String, dynamic> json) => LeafDiagnosis(
@@ -49,5 +65,15 @@ class LeafDiagnosis {
         safetyNotes: json['safetyNotes'] as String,
         escalationStatus:
             EscalationStatus.values.byName(json['escalationStatus'] as String),
+        healthScore: (json['healthScore'] as num?)?.toDouble() ?? ((json['confidence'] as num).toDouble() * 100),
+        deficiencyType: json['deficiencyType'] as String?,
+        diseaseStatus: json['diseaseStatus'] != null
+            ? DiseaseStatus.values.byName(json['diseaseStatus'] as String)
+            : (predictedClassLooksHealthy(json['predictedClass'] as String) ? DiseaseStatus.healthy : DiseaseStatus.infected),
+        recommendations: (json['recommendations'] as List?)?.map((e) => e as String).toList() ??
+            [json['treatment'] as String],
       );
+
+  static bool predictedClassLooksHealthy(String predictedClass) =>
+      predictedClass.toLowerCase().contains('healthy');
 }

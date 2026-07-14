@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../core/localization/locale_provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/icon_circle.dart';
+import '../../data/models/farmer_profile.dart';
 import '../../data/models/forum_post.dart';
 import '../../data/services/app_repository.dart';
 
@@ -32,14 +33,26 @@ class _ForumPostDetailScreenState extends State<ForumPostDetailScreen> {
       orElse: () => ForumPost(
         id: widget.postId,
         author: '',
-        category: ForumCategory.general,
+        category: ForumCategory.plantHealth,
         body: '',
         postedAt: DateTime.now(),
       ),
     );
+    final isLiked = post.likedBy.contains(repo.profile.email);
+    final canPin = repo.profile.farmerType == FarmerType.officer;
 
     return Scaffold(
-      appBar: AppBar(title: Text(strings('communityPost'))),
+      appBar: AppBar(
+        title: Text(strings('communityPost')),
+        actions: [
+          if (canPin)
+            IconButton(
+              icon: Icon(post.isPinned ? Icons.push_pin_rounded : Icons.push_pin_outlined),
+              tooltip: post.isPinned ? strings('unpinPost') : strings('pinPost'),
+              onPressed: () => repo.togglePin(post.id),
+            ),
+        ],
+      ),
       body: Column(
         children: [
           Expanded(
@@ -68,10 +81,29 @@ class _ForumPostDetailScreenState extends State<ForumPostDetailScreen> {
                                 ],
                               ),
                             ),
+                            if (post.isPinned) const Icon(Icons.push_pin_rounded, color: AppColors.amber, size: 18),
                           ],
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 14),
+                        Text(post.title, style: Theme.of(context).textTheme.titleLarge),
+                        const SizedBox(height: 10),
                         Text(post.body, style: const TextStyle(fontSize: 14, height: 1.4)),
+                        const SizedBox(height: 14),
+                        InkWell(
+                          onTap: () => repo.toggleLike(post.id),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                isLiked ? Icons.favorite_rounded : Icons.favorite_outline_rounded,
+                                size: 20,
+                                color: isLiked ? AppColors.confidenceLow : AppColors.grey,
+                              ),
+                              const SizedBox(width: 6),
+                              Text('${post.likes}', style: const TextStyle(color: AppColors.grey, fontSize: 13)),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -124,6 +156,7 @@ class _ForumPostDetailScreenState extends State<ForumPostDetailScreen> {
                             ForumComment(
                               id: 'comment_${DateTime.now().microsecondsSinceEpoch}',
                               author: repo.profile.name,
+                              userId: repo.profile.email,
                               body: body,
                               postedAt: DateTime.now(),
                             ),

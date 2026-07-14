@@ -1,4 +1,4 @@
-// Drives the market-listing CRUD flow (create/edit/delete) and the
+// Drives the marketplace-listing CRUD flow (create/edit/delete) and the
 // recent-scan delete flow end-to-end through real widget taps/drags.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -9,7 +9,7 @@ import 'package:orynta/core/localization/locale_provider.dart';
 import 'package:orynta/data/models/soil_scan.dart';
 import 'package:orynta/data/services/app_repository.dart';
 import 'package:orynta/features/home/home_screen.dart';
-import 'package:orynta/features/market/market_screen.dart';
+import 'package:orynta/features/market/marketplace_home_screen.dart';
 
 Widget _wrap(Widget child, AppRepository repo) {
   return MultiProvider(
@@ -22,46 +22,59 @@ Widget _wrap(Widget child, AppRepository repo) {
 }
 
 void main() {
-  testWidgets('create, edit, and delete a market listing', (tester) async {
+  testWidgets('create, edit, and delete a marketplace listing', (tester) async {
     SharedPreferences.setMockInitialValues({});
     final repo = AppRepository();
     await repo.load();
 
-    await tester.pumpWidget(_wrap(const MarketScreen(), repo));
+    await tester.pumpWidget(_wrap(const MarketplaceHomeScreen(), repo));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('My listings'));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byIcon(Icons.add_rounded));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField).at(0), 'Tomato');
-    await tester.enterText(find.byType(TextField).at(1), '120');
+    await tester.enterText(find.byType(TextField).at(3), '500');
+    await tester.enterText(find.byType(TextField).at(4), '10');
+    await tester.ensureVisible(find.text('Save'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('Tomato'), findsOneWidget);
-    expect(repo.listings, hasLength(1));
+    expect(find.textContaining('Tomato'), findsWidgets);
+    expect(repo.myListings, hasLength(1));
 
-    await tester.tap(find.byIcon(Icons.more_vert_rounded));
+    await tester.tap(find.textContaining('Tomato').first);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Edit'));
+
+    await tester.tap(find.byIcon(Icons.edit_outlined));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField).at(0), 'Maize');
+    await tester.ensureVisible(find.text('Save'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('Maize'), findsOneWidget);
-    expect(find.textContaining('Tomato'), findsNothing);
-    expect(repo.listings.single.cropName, 'Maize');
+    expect(repo.myListings.single.productName, 'Maize');
 
-    await tester.tap(find.byIcon(Icons.more_vert_rounded));
+    await tester.pageBack();
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Delete'));
+
+    expect(find.textContaining('Maize'), findsWidgets);
+    expect(find.textContaining('Tomato'), findsNothing);
+
+    await tester.tap(find.textContaining('Maize').first);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.delete_outline_rounded));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Confirm'));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('Maize'), findsNothing);
-    expect(find.text('You have no active listings.'), findsOneWidget);
-    expect(repo.listings, isEmpty);
+    expect(repo.myListings, isEmpty);
+    expect(find.text("You haven't listed anything yet."), findsOneWidget);
   });
 
   testWidgets('delete a soil scan via swipe on the home screen', (tester) async {
@@ -82,19 +95,23 @@ void main() {
     await tester.pumpWidget(_wrap(const HomeScreen(), repo));
     await tester.pumpAndSettle();
 
+    // Target the swipeable tile by its Dismissible key rather than by the
+    // text "loam" — the dashboard's Latest Soil Scan card now also shows
+    // the soil type as plain text, so a text-based finder is ambiguous.
+    final tile = find.byKey(const ValueKey('scan_1'));
     final homeScroll = find.byKey(const Key('homeScrollView'));
-    await tester.dragUntilVisible(find.text('loam'), homeScroll, const Offset(0, -200));
+    await tester.dragUntilVisible(tile, homeScroll, const Offset(0, -200));
     await tester.pumpAndSettle();
 
-    expect(find.text('loam'), findsOneWidget);
+    expect(tile, findsOneWidget);
     expect(repo.soilScans, hasLength(1));
 
-    await tester.drag(find.text('loam'), const Offset(-500, 0));
+    await tester.drag(tile, const Offset(-500, 0));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Confirm'));
     await tester.pumpAndSettle();
 
-    expect(find.text('loam'), findsNothing);
+    expect(tile, findsNothing);
     expect(repo.soilScans, isEmpty);
   });
 }

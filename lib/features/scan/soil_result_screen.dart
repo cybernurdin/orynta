@@ -102,6 +102,33 @@ class SoilResultScreen extends StatelessWidget {
               ),
             ),
           ),
+          if (scan.smartRecommendations.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            const SectionHeader(title: 'Smart recommendations'),
+            const SizedBox(height: 10),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    for (final tip in scan.smartRecommendations)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(Icons.tips_and_updates_outlined, size: 18, color: AppColors.amber),
+                            const SizedBox(width: 10),
+                            Expanded(child: Text(tip, style: const TextStyle(fontSize: 13, height: 1.4))),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 20),
           SectionHeader(title: strings('recommendedCrops')),
           const SizedBox(height: 10),

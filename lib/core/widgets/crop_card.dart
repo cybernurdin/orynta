@@ -1,17 +1,22 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 import '../../data/models/crop_data.dart';
 
 class CropCard extends StatelessWidget {
   final CropData crop;
   final VoidCallback onTap;
   final bool showFilter;
+  final VoidCallback? onSave;
+  final bool isSaved;
 
   const CropCard({
-    Key? key,
+    super.key,
     required this.crop,
     required this.onTap,
     this.showFilter = false,
-  }) : super(key: key);
+    this.onSave,
+    this.isSaved = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -55,7 +60,19 @@ class CropCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      const Icon(Icons.arrow_forward_rounded, size: 20),
+                      if (onSave != null)
+                        IconButton(
+                          icon: Icon(
+                            isSaved ? Icons.bookmark_rounded : Icons.bookmark_outline_rounded,
+                            color: AppColors.forest,
+                            size: 20,
+                          ),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          onPressed: isSaved ? null : onSave,
+                        )
+                      else
+                        const Icon(Icons.arrow_forward_rounded, size: 20),
                     ],
                   ),
                   const SizedBox(height: 12),

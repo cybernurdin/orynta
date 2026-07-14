@@ -9,15 +9,18 @@ import '../../core/widgets/section_header.dart';
 import '../../data/models/soil_scan.dart';
 import '../../data/models/weather_advisory.dart';
 import '../../data/services/app_repository.dart';
+import '../../data/services/location_service.dart';
 import '../../data/services/weather_service.dart';
 import '../community/forum_screen.dart';
 import '../crops/my_crops_screen.dart';
-import '../learn/planting_guide_screen.dart';
+import '../learn/learn_home_screen.dart';
 import '../notifications/notifications_screen.dart';
 import '../scan/capture_screen.dart';
 import '../scan/scan_type.dart';
 import '../support/chat_screen.dart';
 import 'language_switcher_sheet.dart';
+import 'latest_soil_scan_card.dart';
+import 'quick_tips_section.dart';
 import 'recent_scan_tile.dart';
 import 'scan_history_screen.dart';
 
@@ -35,16 +38,44 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final WeatherService _weatherService = WeatherService();
+  final LocationService _locationService = LocationService();
   WeatherAdvisory? _advisory;
+  WeatherData? _liveWeather;
+  String? _resolvedRegion;
+  bool _resolvingLocation = false;
 
   @override
   void initState() {
     super.initState();
-    _loadWeather();
+    _loadLocationAndWeather();
   }
 
-  Future<void> _loadWeather() async {
-    final advisory = await _weatherService.getWeeklyAdvisory(region: 'West Region');
+  Future<void> _loadLocationAndWeather() async {
+    setState(() => _resolvingLocation = true);
+    final fallbackRegion = context.read<AppRepository>().profile.region;
+    var region = fallbackRegion;
+    try {
+      final position = await _locationService.getCurrentLocation().timeout(const Duration(seconds: 6));
+      region = _locationService.resolveRegionName(position.latitude, position.longitude);
+      // Best-effort live conditions; the advisory text below stays the
+      // stable, template-driven copy regardless of whether this succeeds.
+      _weatherService.getWeatherByCoordinates(position.latitude, position.longitude).then((data) {
+        if (mounted) setState(() => _liveWeather = data);
+      });
+    } catch (_) {
+      region = fallbackRegion;
+    }
+    if (mounted) {
+      setState(() {
+        _resolvedRegion = region;
+        _resolvingLocation = false;
+      });
+    }
+    await _loadWeather(region);
+  }
+
+  Future<void> _loadWeather([String? region]) async {
+    final advisory = await _weatherService.getWeeklyAdvisory(region: region ?? _resolvedRegion ?? 'West Region');
     if (mounted) setState(() => _advisory = advisory);
   }
 
@@ -85,7 +116,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       body: RefreshIndicator(
-        onRefresh: _loadWeather,
+        onRefresh: _loadLocationAndWeather,
         child: ListView(
           key: const Key('homeScrollView'),
           padding: const EdgeInsets.all(16),
@@ -94,7 +125,13 @@ class _HomeScreenState extends State<HomeScreen> {
               OfflineBanner(strings: strings, pendingCount: repo.pendingSyncCount),
               const SizedBox(height: 16),
             ],
-            _WeatherCard(advisory: _advisory, strings: strings),
+            _LocationChip(
+              region: _resolvedRegion ?? repo.profile.region,
+              resolving: _resolvingLocation,
+              onRefresh: _loadLocationAndWeather,
+            ),
+            const SizedBox(height: 12),
+            _WeatherCard(advisory: _advisory, live: _liveWeather, strings: strings),
             const SizedBox(height: 24),
             Row(
               children: [
@@ -130,6 +167,55 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 10),
             _StatsRow(repo: repo, strings: strings),
             const SizedBox(height: 24),
+            SectionHeader(title: strings('latestSoilScan')),
+            const SizedBox(height: 10),
+            LatestSoilScanCard(scan: repo.soilScans.isEmpty ? null : repo.soilScans.first, strings: strings),
+            const SizedBox(height: 24),
+            const QuickTipsSection(),
+            const SizedBox(height: 24),
+            if (repo.savedCrops.isNotEmpty) ...[
+              Row(
+                children: [
+                  Expanded(child: SectionHeader(title: strings('savedRecommendations'))),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const MyCropsScreen()),
+                    ),
+                    child: Text(strings('viewAll')),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                height: 76,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  children: repo.savedCrops
+                      .take(8)
+                      .map(
+                        (c) => Container(
+                          margin: const EdgeInsets.only(right: 10),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: AppColors.moss.withValues(alpha: 0.16),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          alignment: Alignment.centerLeft,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.bookmark_rounded, color: AppColors.forest, size: 16),
+                              const SizedBox(width: 8),
+                              Text(c.cropName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                            ],
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
             SectionHeader(title: strings('soilHealthTrends')),
             const SizedBox(height: 10),
             _SoilHealthTrendCard(scans: repo.soilScans, strings: strings),
@@ -159,7 +245,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     icon: Icons.calendar_month_rounded,
                     label: strings('plantingGuide'),
                     onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const PlantingGuideScreen()),
+                      MaterialPageRoute(builder: (_) => const LearnHomeScreen()),
                     ),
                   ),
                   _ExploreChip(
@@ -203,10 +289,49 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
+class _LocationChip extends StatelessWidget {
+  final String region;
+  final bool resolving;
+  final VoidCallback onRefresh;
+  const _LocationChip({required this.region, required this.resolving, required this.onRefresh});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        const Icon(Icons.location_on_rounded, color: AppColors.forest, size: 18),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            region,
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        InkWell(
+          onTap: resolving ? null : onRefresh,
+          borderRadius: BorderRadius.circular(20),
+          child: Padding(
+            padding: const EdgeInsets.all(6),
+            child: resolving
+                ? const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.forest),
+                  )
+                : const Icon(Icons.refresh_rounded, color: AppColors.forest, size: 16),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _WeatherCard extends StatelessWidget {
   final WeatherAdvisory? advisory;
+  final WeatherData? live;
   final dynamic strings;
-  const _WeatherCard({required this.advisory, required this.strings});
+  const _WeatherCard({required this.advisory, required this.live, required this.strings});
 
   @override
   Widget build(BuildContext context) {
@@ -238,7 +363,9 @@ class _WeatherCard extends StatelessWidget {
               ),
               const Spacer(),
               Text(
-                '${advisory!.highC.round()}° / ${advisory!.lowC.round()}°',
+                live != null
+                    ? '${live!.temperature.round()}°'
+                    : '${advisory!.highC.round()}° / ${advisory!.lowC.round()}°',
                 style: const TextStyle(color: AppColors.white, fontWeight: FontWeight.w600),
               ),
             ],
@@ -259,7 +386,7 @@ class _WeatherCard extends StatelessWidget {
               const Icon(Icons.water_drop_rounded, color: AppColors.moss, size: 16),
               const SizedBox(width: 6),
               Text(
-                '${advisory!.rainChancePercent}% rain chance',
+                live != null ? live!.description : '${advisory!.rainChancePercent}% rain chance',
                 style: TextStyle(color: AppColors.white.withValues(alpha: 0.85), fontSize: 12),
               ),
             ],
@@ -315,24 +442,14 @@ class _StatsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final totalScans = repo.soilScans.length + repo.leafDiagnoses.length;
-    final cropsMonitored = repo.soilScans
-        .expand((s) => s.recommendations.map((r) => r.cropName))
-        .toSet()
-        .length;
-    final healthScore = repo.soilScans.isEmpty
-        ? null
-        : (repo.soilScans.map((s) => s.confidence).reduce((a, b) => a + b) /
-                repo.soilScans.length *
-                100)
-            .round();
+    final healthScore = repo.healthScorePercent;
 
     return Row(
       children: [
         Expanded(
           child: _StatTile(
             icon: Icons.camera_alt_rounded,
-            value: '$totalScans',
+            value: '${repo.totalScansCount}',
             label: strings('totalScans'),
           ),
         ),
@@ -340,7 +457,7 @@ class _StatsRow extends StatelessWidget {
         Expanded(
           child: _StatTile(
             icon: Icons.eco_rounded,
-            value: '$cropsMonitored',
+            value: '${repo.cropsMonitoredCount}',
             label: strings('cropsMonitored'),
           ),
         ),

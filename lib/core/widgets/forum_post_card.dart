@@ -1,8 +1,13 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import '../../data/models/forum_model.dart';
+import '../theme/app_colors.dart';
+import '../../data/models/forum_post.dart';
+import 'icon_circle.dart';
 
 class ForumPostCard extends StatelessWidget {
   final ForumPost post;
+  final String categoryLabel;
   final VoidCallback onTap;
   final VoidCallback onLike;
   final VoidCallback onBookmark;
@@ -10,53 +15,42 @@ class ForumPostCard extends StatelessWidget {
   final bool isBookmarked;
 
   const ForumPostCard({
-    Key? key,
+    super.key,
     required this.post,
+    required this.categoryLabel,
     required this.onTap,
     required this.onLike,
     required this.onBookmark,
     this.isLiked = false,
     this.isBookmarked = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      elevation: 1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      margin: const EdgeInsets.only(bottom: 10),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // User info header
               Row(
                 children: [
-                  // User avatar
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.grey[300],
-                      image: DecorationImage(
-                        image: NetworkImage(post.userPhotoUrl),
+                  if (post.userPhotoUrl.isEmpty)
+                    const IconCircle(icon: Icons.person_rounded, size: 44)
+                  else
+                    ClipOval(
+                      child: Image.network(
+                        post.userPhotoUrl,
+                        width: 44,
+                        height: 44,
                         fit: BoxFit.cover,
-                        onError: (exception, stackTrace) {},
+                        errorBuilder: (_, _, _) => const IconCircle(icon: Icons.person_rounded, size: 44),
                       ),
                     ),
-                    child: post.userPhotoUrl.isEmpty
-                        ? Center(
-                            child: Icon(
-                              Icons.person,
-                              color: Colors.grey[600],
-                            ),
-                          )
-                        : null,
-                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -64,136 +58,79 @@ class ForumPostCard extends StatelessWidget {
                       children: [
                         Row(
                           children: [
-                            Text(
-                              post.userName,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
+                            Flexible(
+                              child: Text(
+                                post.author,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                               ),
                             ),
                             const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: _getUserLevelColor(post.userLevel),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                post.userLevel.replaceAll('_', ' ').toUpperCase(),
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
+                            _LevelBadge(level: post.userLevel),
                           ],
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          _formatTime(post.createdAt),
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
-                          ),
+                          _formatTime(post.postedAt),
+                          style: const TextStyle(fontSize: 12, color: AppColors.grey),
                         ),
                       ],
                     ),
                   ),
-                  if (post.isPinned)
-                    const Icon(
-                      Icons.push_pin,
-                      color: Colors.orange,
-                      size: 20,
-                    ),
+                  if (post.isPinned) const Icon(Icons.push_pin_rounded, color: AppColors.amber, size: 20),
                 ],
               ),
               const SizedBox(height: 12),
-
-              // Category badge
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: _getCategoryColor(post.category).withOpacity(0.2),
+                  color: AppColors.moss.withValues(alpha: 0.22),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  post.category.replaceAll('_', ' ').toUpperCase(),
-                  style: TextStyle(
-                    color: _getCategoryColor(post.category),
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  categoryLabel,
+                  style: const TextStyle(color: AppColors.forest, fontSize: 11, fontWeight: FontWeight.w700),
                 ),
               ),
               const SizedBox(height: 12),
-
-              // Post title and content
               Text(
                 post.title,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               Text(
-                post.content,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[700],
-                  height: 1.5,
-                ),
+                post.body,
+                style: const TextStyle(fontSize: 14, color: AppColors.grey, height: 1.5),
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 12),
-
-              // Image if exists
-              if (post.imageUrl != null)
+              if (post.imageUrl != null) ...[
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: Image.network(
-                    post.imageUrl!,
-                    height: 150,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        height: 150,
-                        color: Colors.grey[200],
-                        child: const Center(
-                          child: Icon(Icons.image, size: 40),
-                        ),
-                      );
-                    },
-                  ),
+                  child: _PostImage(path: post.imageUrl!),
                 ),
-              if (post.imageUrl != null) const SizedBox(height: 12),
-
-              // Engagement metrics
+                const SizedBox(height: 12),
+              ],
               Row(
                 children: [
                   _EngagementButton(
-                    icon: isLiked ? Icons.favorite : Icons.favorite_outline,
+                    icon: isLiked ? Icons.favorite_rounded : Icons.favorite_outline_rounded,
                     label: post.likes.toString(),
                     onTap: onLike,
                     isActive: isLiked,
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 20),
                   _EngagementButton(
-                    icon: Icons.comment_outlined,
-                    label: post.comments.toString(),
+                    icon: Icons.mode_comment_outlined,
+                    label: post.comments.length.toString(),
                     onTap: onTap,
                   ),
                   const Spacer(),
                   _EngagementButton(
-                    icon: isBookmarked ? Icons.bookmark : Icons.bookmark_outline,
+                    icon: isBookmarked ? Icons.bookmark_rounded : Icons.bookmark_outline_rounded,
                     label: '',
                     onTap: onBookmark,
                     isActive: isBookmarked,
@@ -223,36 +160,71 @@ class ForumPostCard extends StatelessWidget {
       return dateTime.toString().split(' ')[0];
     }
   }
+}
 
-  Color _getUserLevelColor(String level) {
-    switch (level) {
-      case 'expert_farmer':
-        return const Color(0xFF4CAF50);
-      case 'intermediate':
-        return const Color(0xFFFFC107);
-      case 'beginner':
-        return const Color(0xFF2196F3);
-      default:
-        return Colors.grey;
+class _LevelBadge extends StatelessWidget {
+  final String level;
+  const _LevelBadge({required this.level});
+
+  Color get _color => switch (level) {
+        'expert_farmer' => AppColors.forest,
+        'intermediate' => AppColors.amber,
+        _ => AppColors.grey,
+      };
+
+  String get _label => switch (level) {
+        'expert_farmer' => 'Expert farmer',
+        'intermediate' => 'Intermediate',
+        _ => 'Beginner farmer',
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(color: _color, borderRadius: BorderRadius.circular(12)),
+      child: Text(
+        _label,
+        style: const TextStyle(color: AppColors.white, fontSize: 9, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+}
+
+/// Renders either a network URL (seeded content) or a locally-picked photo
+/// (`image_picker` path from `NewPostSheet`), matching the same
+/// kIsWeb-guarded pattern used in `capture_screen.dart`.
+class _PostImage extends StatelessWidget {
+  final String path;
+  const _PostImage({required this.path});
+
+  @override
+  Widget build(BuildContext context) {
+    const height = 150.0;
+    if (path.startsWith('http')) {
+      return Image.network(
+        path,
+        height: height,
+        width: double.infinity,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => _placeholder(),
+      );
     }
+    if (kIsWeb) return _placeholder();
+    return Image.file(
+      File(path),
+      height: height,
+      width: double.infinity,
+      fit: BoxFit.cover,
+      errorBuilder: (_, _, _) => _placeholder(),
+    );
   }
 
-  Color _getCategoryColor(String category) {
-    switch (category) {
-      case 'soil_management':
-        return const Color(0xFF8D6E63);
-      case 'plant_health':
-        return const Color(0xFF4CAF50);
-      case 'pest_control':
-        return const Color(0xFFE91E63);
-      case 'technology':
-        return const Color(0xFF2196F3);
-      case 'success_stories':
-        return const Color(0xFFFF9800);
-      default:
-        return const Color(0xFF607D8B);
-    }
-  }
+  Widget _placeholder() => Container(
+        height: 150,
+        color: AppColors.moss.withValues(alpha: 0.15),
+        child: const Center(child: Icon(Icons.image_outlined, size: 32, color: AppColors.grey)),
+      );
 }
 
 class _EngagementButton extends StatelessWidget {
@@ -277,17 +249,13 @@ class _EngagementButton extends StatelessWidget {
           Icon(
             icon,
             size: 20,
-            color: isActive ? Colors.red : Colors.grey[600],
+            color: isActive ? AppColors.confidenceLow : AppColors.grey,
           ),
           if (label.isNotEmpty) ...[
             const SizedBox(width: 6),
             Text(
               label,
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[600],
-                fontWeight: FontWeight.w500,
-              ),
+              style: const TextStyle(fontSize: 12, color: AppColors.grey, fontWeight: FontWeight.w500),
             ),
           ],
         ],

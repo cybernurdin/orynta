@@ -4,7 +4,10 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'core/localization/locale_provider.dart';
 import 'core/theme/app_theme.dart';
+import 'core/theme/theme_mode_provider.dart';
 import 'data/services/app_repository.dart';
+import 'data/services/local_auth_service.dart';
+import 'features/auth/login_screen.dart';
 import 'features/onboarding/onboarding_screen.dart';
 import 'features/shell/app_shell.dart';
 
@@ -16,14 +19,17 @@ class OryntaApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => LocaleProvider()..load()),
+        ChangeNotifierProvider(create: (_) => ThemeModeProvider()..load()),
         ChangeNotifierProvider(create: (_) => AppRepository()..load()),
       ],
-      child: Consumer<LocaleProvider>(
-        builder: (context, locale, _) {
+      child: Consumer2<LocaleProvider, ThemeModeProvider>(
+        builder: (context, locale, themeMode, _) {
           return MaterialApp(
             title: 'Orynta',
             debugShowCheckedModeBanner: false,
             theme: AppTheme.light(),
+            darkTheme: AppTheme.dark(),
+            themeMode: themeMode.mode,
             locale: locale.locale,
             supportedLocales: const [Locale('en'), Locale('fr')],
             localizationsDelegates: const [
@@ -46,8 +52,10 @@ class _StartupGate extends StatefulWidget {
   State<_StartupGate> createState() => _StartupGateState();
 }
 
+enum _StartupDestination { onboarding, login, home }
+
 class _StartupGateState extends State<_StartupGate> {
-  bool? _onboardingDone;
+  _StartupDestination? _destination;
 
   @override
   void initState() {
@@ -57,15 +65,24 @@ class _StartupGateState extends State<_StartupGate> {
 
   Future<void> _check() async {
     final prefs = await SharedPreferences.getInstance();
-    final done = prefs.getBool(onboardingDoneKey) ?? false;
-    if (mounted) setState(() => _onboardingDone = done);
+    final onboardingDone = prefs.getBool(onboardingDoneKey) ?? false;
+    if (!onboardingDone) {
+      if (mounted) setState(() => _destination = _StartupDestination.onboarding);
+      return;
+    }
+    final session = await LocalAuthService().currentSession();
+    if (mounted) {
+      setState(() => _destination = session == null ? _StartupDestination.login : _StartupDestination.home);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_onboardingDone == null) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
-    return _onboardingDone! ? const AppShell() : const OnboardingScreen();
+    return switch (_destination) {
+      null => const Scaffold(body: Center(child: CircularProgressIndicator())),
+      _StartupDestination.onboarding => const OnboardingScreen(),
+      _StartupDestination.login => const LoginScreen(),
+      _StartupDestination.home => const AppShell(),
+    };
   }
 }

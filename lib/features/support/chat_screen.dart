@@ -117,22 +117,34 @@ class _ChatBubble extends StatelessWidget {
     final isFarmer = message.sender == ChatSender.farmer;
     return Align(
       alignment: isFarmer ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
-        decoration: BoxDecoration(
-          color: isFarmer ? AppColors.forest : AppColors.white,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Text(
-          message.body,
-          style: TextStyle(
-            color: isFarmer ? AppColors.white : AppColors.ink,
-            fontSize: 14,
-            height: 1.35,
+      child: Column(
+        crossAxisAlignment: isFarmer ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        children: [
+          Container(
+            margin: const EdgeInsets.only(bottom: 3),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+            decoration: BoxDecoration(
+              color: isFarmer ? AppColors.forest : AppColors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              message.body,
+              style: TextStyle(
+                color: isFarmer ? AppColors.white : AppColors.ink,
+                fontSize: 14,
+                height: 1.35,
+              ),
+            ),
           ),
-        ),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Text(
+              '${message.sentAt.hour.toString().padLeft(2, '0')}:${message.sentAt.minute.toString().padLeft(2, '0')}',
+              style: const TextStyle(fontSize: 10, color: AppColors.grey),
+            ),
+          ),
+        ],
       ),
     );
   }

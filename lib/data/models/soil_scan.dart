@@ -51,6 +51,7 @@ class SoilScan {
   final double phosphorusPercent;
   final double potassiumPercent;
   final String region;
+  final List<String> smartRecommendations;
 
   const SoilScan({
     required this.id,
@@ -70,6 +71,7 @@ class SoilScan {
     this.phosphorusPercent = 50,
     this.potassiumPercent = 50,
     this.region = 'Not set',
+    this.smartRecommendations = const [],
   });
 
   Map<String, dynamic> toJson() => {
@@ -90,6 +92,7 @@ class SoilScan {
         'phosphorusPercent': phosphorusPercent,
         'potassiumPercent': potassiumPercent,
         'region': region,
+        'smartRecommendations': smartRecommendations,
       };
 
   factory SoilScan.fromJson(Map<String, dynamic> json) => SoilScan(
@@ -113,5 +116,7 @@ class SoilScan {
         phosphorusPercent: (json['phosphorusPercent'] as num?)?.toDouble() ?? 50,
         potassiumPercent: (json['potassiumPercent'] as num?)?.toDouble() ?? 50,
         region: json['region'] as String? ?? 'Not set',
+        smartRecommendations:
+            (json['smartRecommendations'] as List?)?.map((e) => e as String).toList() ?? const [],
       );
 }

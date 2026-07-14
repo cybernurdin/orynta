@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/services/app_repository.dart';
+import '../../data/services/local_auth_service.dart';
 import 'signup_screen.dart';
 import 'password_reset_screen.dart';
 import '../shell/app_shell.dart';
@@ -14,6 +15,7 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  final _localAuth = LocalAuthService();
   late final TextEditingController _emailController;
   late final TextEditingController _passwordController;
   bool _isLoading = false;
@@ -34,6 +36,14 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  Future<void> _enterApp() async {
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const AppShell()),
+      (route) => false,
+    );
+  }
+
   Future<void> _handleLogin() async {
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
       setState(() => _errorMessage = 'Please fill in all fields');
@@ -46,46 +56,41 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      // Demo mode: just check non-empty
-      // In production, would call actual auth service
-      await Future.delayed(const Duration(milliseconds: 800));
-      
-      if (mounted) {
-        final repo = context.read<AppRepository>();
-        await repo.load();
-        
-        if (mounted) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const AppShell()),
-          );
-        }
-      }
+      final account = await _localAuth.login(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+      if (!mounted) return;
+      final repo = context.read<AppRepository>();
+      await repo.updateProfile(
+        repo.profile.copyWith(name: account.displayName, email: account.email, farmerType: account.farmerType),
+      );
+      await _enterApp();
+    } on LocalAuthException catch (e) {
+      if (mounted) setState(() => _errorMessage = e.message);
     } catch (e) {
-      if (mounted) setState(() => _errorMessage = e.toString());
+      if (mounted) setState(() => _errorMessage = 'Something went wrong. Please try again.');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
   Future<void> _handleGoogleSignIn() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
 
     try {
-      // Demo mode: simulate Google login
-      await Future.delayed(const Duration(milliseconds: 1000));
-      
-      if (mounted) {
-        final repo = context.read<AppRepository>();
-        await repo.load();
-        
-        if (mounted) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const AppShell()),
-          );
-        }
-      }
+      final account = await _localAuth.simulateGoogleSignIn();
+      if (!mounted) return;
+      final repo = context.read<AppRepository>();
+      await repo.updateProfile(
+        repo.profile.copyWith(name: account.displayName, email: account.email, farmerType: account.farmerType),
+      );
+      await _enterApp();
     } catch (e) {
-      if (mounted) setState(() => _errorMessage = e.toString());
+      if (mounted) setState(() => _errorMessage = 'Google sign-in failed. Please try again.');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -104,7 +109,7 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
                 const SizedBox(height: 20),
                 Text(
-                  'Welcome Back',
+                  'Welcome back',
                   style: Theme.of(context).textTheme.headlineMedium,
                 ),
                 const SizedBox(height: 8),
@@ -116,19 +121,18 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 32),
 
-                // Error message
                 if (_errorMessage != null) ...[
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.red.withOpacity(0.1),
-                      border: Border.all(color: Colors.red),
+                      color: AppColors.confidenceLow.withValues(alpha: 0.1),
+                      border: Border.all(color: AppColors.confidenceLow),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       _errorMessage!,
                       style: const TextStyle(
-                        color: Colors.red,
+                        color: AppColors.confidenceLow,
                         fontSize: 14,
                       ),
                     ),
@@ -136,14 +140,13 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 16),
                 ],
 
-                // Email field
                 TextField(
                   controller: _emailController,
                   enabled: !_isLoading,
                   keyboardType: TextInputType.emailAddress,
                   decoration: InputDecoration(
-                    labelText: 'Email Address',
-                    hintText: 'example@email.com',
+                    labelText: 'Email address',
+                    hintText: 'you@example.com',
                     prefixIcon: const Icon(Icons.email_outlined),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
@@ -152,7 +155,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // Password field
                 TextField(
                   controller: _passwordController,
                   enabled: !_isLoading,
@@ -163,7 +165,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     prefixIcon: const Icon(Icons.lock_outlined),
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                        _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
                       ),
                       onPressed: () {
                         setState(() => _obscurePassword = !_obscurePassword);
@@ -176,7 +178,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 12),
 
-                // Forgot password link
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
@@ -189,12 +190,11 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             );
                           },
-                    child: const Text('Forgot Password?'),
+                    child: const Text('Forgot password?'),
                   ),
                 ),
                 const SizedBox(height: 24),
 
-                // Login button
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
@@ -205,63 +205,49 @@ class _LoginScreenState extends State<LoginScreen> {
                             width: 20,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation(Colors.white),
+                              valueColor: AlwaysStoppedAnimation(AppColors.white),
                             ),
                           )
-                        : const Text('Sign In'),
+                        : const Text('Sign in'),
                   ),
                 ),
                 const SizedBox(height: 24),
 
-                // Divider
                 Row(
                   children: [
-                    Expanded(
-                      child: Divider(color: Colors.grey[300]),
-                    ),
+                    const Expanded(child: Divider(color: AppColors.grey)),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       child: Text(
                         'or continue with',
-                        style: TextStyle(
-                          color: Colors.grey[600],
+                        style: const TextStyle(
+                          color: AppColors.grey,
                           fontSize: 14,
                         ),
                       ),
                     ),
-                    Expanded(
-                      child: Divider(color: Colors.grey[300]),
-                    ),
+                    const Expanded(child: Divider(color: AppColors.grey)),
                   ],
                 ),
                 const SizedBox(height: 24),
 
-                // Google sign in button
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
                     onPressed: _isLoading ? null : _handleGoogleSignIn,
-                    icon: Image.asset(
-                      'assets/google_logo.png',
-                      width: 20,
-                      height: 20,
-                      errorBuilder: (context, error, stackTrace) {
-                        return const Icon(Icons.account_circle);
-                      },
-                    ),
+                    icon: const Icon(Icons.g_mobiledata_rounded, size: 26),
                     label: const Text('Sign in with Google'),
                   ),
                 ),
                 const SizedBox(height: 32),
 
-                // Sign up link
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
+                    const Text(
                       "Don't have an account? ",
                       style: TextStyle(
-                        color: Colors.grey[600],
+                        color: AppColors.grey,
                         fontSize: 14,
                       ),
                     ),
@@ -276,7 +262,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               );
                             },
                       child: const Text(
-                        'Sign Up',
+                        'Sign up',
                         style: TextStyle(
                           color: AppColors.forest,
                           fontWeight: FontWeight.bold,

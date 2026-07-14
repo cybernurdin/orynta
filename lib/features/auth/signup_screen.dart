@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/models/farmer_profile.dart';
 import '../../data/services/app_repository.dart';
+import '../../data/services/local_auth_service.dart';
 import 'login_screen.dart';
 import '../shell/app_shell.dart';
 
@@ -14,6 +15,7 @@ class SignupScreen extends StatefulWidget {
 }
 
 class _SignupScreenState extends State<SignupScreen> {
+  final _localAuth = LocalAuthService();
   late final TextEditingController _nameController;
   late final TextEditingController _emailController;
   late final TextEditingController _passwordController;
@@ -52,6 +54,11 @@ class _SignupScreenState extends State<SignupScreen> {
       return;
     }
 
+    if (!_emailController.text.contains('@')) {
+      setState(() => _errorMessage = 'Please enter a valid email address');
+      return;
+    }
+
     if (_passwordController.text != _confirmPasswordController.text) {
       setState(() => _errorMessage = 'Passwords do not match');
       return;
@@ -68,26 +75,33 @@ class _SignupScreenState extends State<SignupScreen> {
     });
 
     try {
-      // Demo mode: create profile locally
-      await Future.delayed(const Duration(milliseconds: 800));
-      
+      final farmerType = _farmerTypeForSelection(_selectedUserType);
+      final account = await _localAuth.register(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+        displayName: _nameController.text.trim(),
+        farmerType: farmerType,
+      );
+
+      if (!mounted) return;
+      final repo = context.read<AppRepository>();
+      final profile = FarmerProfile.defaults().copyWith(
+        name: account.displayName,
+        email: account.email,
+        farmerType: account.farmerType,
+      );
+      await repo.updateProfile(profile);
+
       if (mounted) {
-        final repo = context.read<AppRepository>();
-        final defaults = FarmerProfile.defaults();
-        final profile = defaults.copyWith(
-          name: _nameController.text.trim(),
-          farmerType: _farmerTypeForSelection(_selectedUserType),
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const AppShell()),
+          (route) => false,
         );
-        await repo.updateProfile(profile);
-        
-        if (mounted) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const AppShell()),
-          );
-        }
       }
+    } on LocalAuthException catch (e) {
+      if (mounted) setState(() => _errorMessage = e.message);
     } catch (e) {
-      if (mounted) setState(() => _errorMessage = e.toString());
+      if (mounted) setState(() => _errorMessage = 'Something went wrong. Please try again.');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -106,7 +120,7 @@ class _SignupScreenState extends State<SignupScreen> {
     return Scaffold(
       backgroundColor: AppColors.cream,
       appBar: AppBar(
-        title: const Text('Create Account'),
+        title: const Text('Create account'),
         centerTitle: true,
       ),
       body: SafeArea(
@@ -129,19 +143,18 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
                 const SizedBox(height: 24),
 
-                // Error message
                 if (_errorMessage != null) ...[
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.red.withOpacity(0.1),
-                      border: Border.all(color: Colors.red),
+                      color: AppColors.confidenceLow.withValues(alpha: 0.1),
+                      border: Border.all(color: AppColors.confidenceLow),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       _errorMessage!,
                       style: const TextStyle(
-                        color: Colors.red,
+                        color: AppColors.confidenceLow,
                         fontSize: 14,
                       ),
                     ),
@@ -149,12 +162,11 @@ class _SignupScreenState extends State<SignupScreen> {
                   const SizedBox(height: 16),
                 ],
 
-                // Full name
                 TextField(
                   controller: _nameController,
                   enabled: !_isLoading,
                   decoration: InputDecoration(
-                    labelText: 'Full Name',
+                    labelText: 'Full name',
                     hintText: 'Your full name',
                     prefixIcon: const Icon(Icons.person_outlined),
                     border: OutlineInputBorder(
@@ -164,14 +176,13 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // Email
                 TextField(
                   controller: _emailController,
                   enabled: !_isLoading,
                   keyboardType: TextInputType.emailAddress,
                   decoration: InputDecoration(
-                    labelText: 'Email Address',
-                    hintText: 'example@email.com',
+                    labelText: 'Email address',
+                    hintText: 'you@example.com',
                     prefixIcon: const Icon(Icons.email_outlined),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
@@ -180,7 +191,6 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // User type selection
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -209,7 +219,7 @@ class _SignupScreenState extends State<SignupScreen> {
                               : () => setState(() => _selectedUserType = 'buyer'),
                         ),
                         _UserTypeChip(
-                          label: 'Extension Officer',
+                          label: 'Extension officer',
                           selected: _selectedUserType == 'extension_officer',
                           onTap: _isLoading
                               ? null
@@ -221,7 +231,6 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
                 const SizedBox(height: 24),
 
-                // Password
                 TextField(
                   controller: _passwordController,
                   enabled: !_isLoading,
@@ -232,7 +241,7 @@ class _SignupScreenState extends State<SignupScreen> {
                     prefixIcon: const Icon(Icons.lock_outlined),
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                        _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
                       ),
                       onPressed: () {
                         setState(() => _obscurePassword = !_obscurePassword);
@@ -245,18 +254,17 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // Confirm password
                 TextField(
                   controller: _confirmPasswordController,
                   enabled: !_isLoading,
                   obscureText: _obscureConfirmPassword,
                   decoration: InputDecoration(
-                    labelText: 'Confirm Password',
+                    labelText: 'Confirm password',
                     hintText: 'Confirm your password',
                     prefixIcon: const Icon(Icons.lock_outlined),
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
+                        _obscureConfirmPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
                       ),
                       onPressed: () {
                         setState(() => _obscureConfirmPassword = !_obscureConfirmPassword);
@@ -269,7 +277,6 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
                 const SizedBox(height: 24),
 
-                // Sign up button
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
@@ -280,22 +287,21 @@ class _SignupScreenState extends State<SignupScreen> {
                             width: 20,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation(Colors.white),
+                              valueColor: AlwaysStoppedAnimation(AppColors.white),
                             ),
                           )
-                        : const Text('Create Account'),
+                        : const Text('Create account'),
                   ),
                 ),
                 const SizedBox(height: 16),
 
-                // Sign in link
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
+                    const Text(
                       'Already have an account? ',
                       style: TextStyle(
-                        color: Colors.grey[600],
+                        color: AppColors.grey,
                         fontSize: 14,
                       ),
                     ),
@@ -308,7 +314,7 @@ class _SignupScreenState extends State<SignupScreen> {
                                 ),
                               ),
                       child: const Text(
-                        'Sign In',
+                        'Sign in',
                         style: TextStyle(
                           color: AppColors.forest,
                           fontWeight: FontWeight.bold,
@@ -344,10 +350,10 @@ class _UserTypeChip extends StatelessWidget {
       label: Text(label),
       selected: selected,
       onSelected: onTap != null ? (_) => onTap?.call() : null,
-      backgroundColor: Colors.grey[100],
-      selectedColor: AppColors.moss.withOpacity(0.2),
+      backgroundColor: AppColors.white,
+      selectedColor: AppColors.moss.withValues(alpha: 0.2),
       labelStyle: TextStyle(
-        color: selected ? AppColors.forest : Colors.grey[700],
+        color: selected ? AppColors.forest : AppColors.grey,
         fontWeight: selected ? FontWeight.bold : FontWeight.normal,
       ),
     );

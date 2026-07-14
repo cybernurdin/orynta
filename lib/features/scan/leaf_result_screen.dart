@@ -51,12 +51,44 @@ class _LeafResultScreenState extends State<LeafResultScreen> {
                 children: [
                   ConfidenceBadge(confidence: diagnosis.confidence, strings: strings),
                   const SizedBox(height: 16),
+                  Text('Leaf health score', style: Theme.of(context).textTheme.titleSmall),
+                  const SizedBox(height: 8),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        '${diagnosis.healthScore.round()}',
+                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                              color: AppColors.confidenceColor(diagnosis.healthScore / 100),
+                              fontSize: 42,
+                            ),
+                      ),
+                      const Padding(
+                        padding: EdgeInsets.only(left: 4, bottom: 8),
+                        child: Text('/ 100', style: TextStyle(color: AppColors.grey)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
                   Text(strings('diagnosis'), style: const TextStyle(color: AppColors.grey, fontSize: 13)),
                   const SizedBox(height: 4),
                   Text(
                     diagnosis.predictedClass,
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontSize: 20),
                   ),
+                  if (diagnosis.deficiencyType != null) ...[
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        const Icon(Icons.warning_amber_rounded, size: 16, color: AppColors.amber),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Possible deficiency: ${diagnosis.deficiencyType}',
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.amber),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -94,7 +126,7 @@ class _LeafResultScreenState extends State<LeafResultScreen> {
             ),
           ],
           const SizedBox(height: 20),
-          SectionHeader(title: strings('treatment')),
+          SectionHeader(title: 'Recommendations'),
           const SizedBox(height: 10),
           Card(
             child: Padding(
@@ -102,8 +134,19 @@ class _LeafResultScreenState extends State<LeafResultScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(diagnosis.treatment, style: const TextStyle(fontSize: 14, height: 1.4)),
-                  const Divider(height: 24),
+                  for (final tip in diagnosis.recommendations.isNotEmpty ? diagnosis.recommendations : [diagnosis.treatment])
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.tips_and_updates_outlined, size: 18, color: AppColors.amber),
+                          const SizedBox(width: 10),
+                          Expanded(child: Text(tip, style: const TextStyle(fontSize: 13, height: 1.4))),
+                        ],
+                      ),
+                    ),
+                  const Divider(height: 14),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/localization/locale_provider.dart';
 import '../home/home_screen.dart';
-import '../market/market_screen.dart';
+import '../market/marketplace_home_screen.dart';
 import '../profile/profile_screen.dart';
 import '../scan/scan_home_screen.dart';
 
@@ -20,7 +20,7 @@ class _AppShellState extends State<AppShell> {
   static const _screens = [
     HomeScreen(),
     ScanHomeScreen(),
-    MarketScreen(),
+    MarketplaceHomeScreen(),
     ProfileScreen(),
   ];
 
